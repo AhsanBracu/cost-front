@@ -9,6 +9,7 @@ import { VerifyEmailPage } from "./pages/VerifyEmailPage";
 import { CostsListPage } from "./pages/CostsListPage";
 import { CostFormPage } from "./pages/CostFormPage";
 import { ProfilePage } from "./pages/ProfilePage";
+import { ReportsPage } from "./pages/ReportsPage";
 
 function App() {
   return (
@@ -26,6 +27,7 @@ function App() {
           <Route path="/costs" element={<CostsListPage />} />
           <Route path="/costs/new" element={<CostFormPage />} />
           <Route path="/costs/:id" element={<CostFormPage />} />
+          <Route path="/reports" element={<ReportsPage />} />
           <Route path="/profile" element={<ProfilePage />} />
         </Route>
       </Route>

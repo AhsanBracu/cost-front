@@ -80,3 +80,52 @@ export interface CostFormInput {
   notes?: string;
   receipt?: File | null;
 }
+
+export interface ReportQuery {
+  startDate?: string;
+  endDate?: string;
+}
+
+export type ReportInterval = "day" | "week" | "month";
+
+export interface ReportTrendQuery extends ReportQuery {
+  interval?: ReportInterval;
+}
+
+export interface CurrencyTotal {
+  currency: string;
+  total: number;
+  count: number;
+}
+
+export interface CategoryTotal {
+  category: CostCategory;
+  currency: string;
+  total: number;
+  count: number;
+}
+
+export interface PaymentMethodTotal {
+  paymentMethod: PaymentMethod;
+  currency: string;
+  total: number;
+  count: number;
+}
+
+export interface ReportSummary {
+  overall: CurrencyTotal[];
+  byCategory: CategoryTotal[];
+  byPaymentMethod: PaymentMethodTotal[];
+}
+
+export interface TrendPoint {
+  period: string;
+  currency: string;
+  total: number;
+  count: number;
+}
+
+export interface ReportTrend {
+  interval: ReportInterval;
+  data: TrendPoint[];
+}

@@ -5,6 +5,7 @@ import { Link } from "react-router-dom";
 import { CostsApi } from "../api/costs";
 import { getErrorMessage, receiptUrl } from "../lib/api";
 import { CategoryBadge, CATEGORY_COLORS } from "../lib/categoryMeta";
+import { currencyFormatter } from "../lib/format";
 import { CostCategory, PaymentMethod } from "../types";
 import type { CostListQuery } from "../types";
 
@@ -19,14 +20,6 @@ const DEFAULT_FILTERS: CostListQuery = {
 // size) rather than the full filtered set, since there's no aggregate
 // endpoint. Truncation is called out in the UI when it applies.
 const STATS_SAMPLE_SIZE = 100;
-
-const currencyFormatter = (amount: number, currency: string) => {
-  try {
-    return new Intl.NumberFormat(undefined, { style: "currency", currency }).format(amount);
-  } catch {
-    return `${amount} ${currency}`;
-  }
-};
 
 function StatTile({ label, value, sub }: { label: string; value: ReactNode; sub?: string }) {
   return (

@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx create-vite@latest --help)",
+      "Bash(mv .claude /tmp/cost-front-claude-backup)",
+      "Bash(npx create-vite@latest . --template react-ts --overwrite --no-interactive)",
+      "Bash(npm run *)",
+      "Bash(node test2.js)"
+    ]
+  }
+}
