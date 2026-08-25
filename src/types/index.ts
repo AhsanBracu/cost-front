@@ -129,3 +129,84 @@ export interface ReportTrend {
   interval: ReportInterval;
   data: TrendPoint[];
 }
+
+export interface Income {
+  _id: string;
+  user: string;
+  year: number;
+  month: number;
+  amount: number;
+  currency: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface IncomeListQuery {
+  year?: number;
+  month?: number;
+}
+
+export interface IncomeFormInput {
+  year: number;
+  month: number;
+  amount: number;
+  currency: string;
+}
+
+export interface SavingsGoal {
+  _id: string;
+  user: string;
+  year: number;
+  month: number;
+  targetAmount: number;
+  currency: string;
+  purpose: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SavingsGoalListQuery {
+  year?: number;
+  month?: number;
+}
+
+export interface SavingsGoalFormInput {
+  year: number;
+  month: number;
+  targetAmount: number;
+  currency: string;
+  purpose: string;
+}
+
+export interface SavingsSummaryBreakdown {
+  currency: string;
+  income: number;
+  spent: number;
+  actualSaved: number;
+  goalTotal: number;
+  difference: number;
+}
+
+export interface SavingsSummary {
+  year: number;
+  month: number;
+  goals: SavingsGoal[];
+  breakdown: SavingsSummaryBreakdown[];
+}
+
+export interface SavingsTrendQuery {
+  startYear: number;
+  startMonth: number;
+  endYear: number;
+  endMonth: number;
+}
+
+export interface SavingsTrendMonth {
+  year: number;
+  month: number;
+  breakdown: SavingsSummaryBreakdown[];
+}
+
+export interface SavingsTrend {
+  data: SavingsTrendMonth[];
+}

@@ -2,11 +2,28 @@ import { useMemo, useState } from "react";
 import type { FormEvent, ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ReportsApi } from "../api/reports";
+import { SavingsGoalsApi } from "../api/savingsGoals";
 import { TrendChart, TrendTable } from "../components/TrendChart";
 import { getErrorMessage } from "../lib/api";
 import { CATEGORY_COLORS } from "../lib/categoryMeta";
 import { CATEGORICAL_PALETTE, currencyFormatter } from "../lib/format";
-import type { CategoryTotal, PaymentMethodTotal, ReportInterval, ReportQuery } from "../types";
+import type { CategoryTotal, PaymentMethodTotal, ReportInterval, ReportQuery, SavingsTrendQuery } from "../types";
+
+// Inclusive range of `monthsBack` months ending at the current calendar month.
+function getSavingsMonthRange(monthsBack: number): SavingsTrendQuery {
+  const now = new Date();
+  const endYear = now.getFullYear();
+  const endMonth = now.getMonth() + 1;
+  let startYear = endYear;
+  let startMonth = endMonth - (monthsBack - 1);
+  while (startMonth <= 0) {
+    startMonth += 12;
+    startYear -= 1;
+  }
+  return { startYear, startMonth, endYear, endMonth };
+}
+
+const monthLabel = (year: number, month: number) => `${year}-${String(month).padStart(2, "0")}`;
 
 const toDateInput = (date: Date) => date.toISOString().slice(0, 10);
 
@@ -132,6 +149,13 @@ export function ReportsPage() {
   const [trendView, setTrendView] = useState<"chart" | "table">("chart");
   const [compareEnabled, setCompareEnabled] = useState(true);
   const [formState, setFormState] = useState(() => ({ ...getDefaultRange(), interval: "month" as ReportInterval }));
+  const [savingsMonthsBack, setSavingsMonthsBack] = useState(6);
+
+  const savingsRange = useMemo(() => getSavingsMonthRange(savingsMonthsBack), [savingsMonthsBack]);
+  const { data: savingsTrend, isLoading: savingsTrendLoading, error: savingsTrendError } = useQuery({
+    queryKey: ["savings-trend", savingsRange],
+    queryFn: () => SavingsGoalsApi.getTrend(savingsRange),
+  });
 
   const { data: summary, isLoading: summaryLoading, error: summaryError } = useQuery({
     queryKey: ["report-summary", filters],
@@ -419,6 +443,67 @@ export function ReportsPage() {
           </div>
         </>
       )}
+
+      <div className="mt-6 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-slate-700">Income &amp; savings trend</h2>
+          <select
+            aria-label="Months back"
+            value={savingsMonthsBack}
+            onChange={(e) => setSavingsMonthsBack(Number(e.target.value))}
+            className="rounded-md border border-slate-300 px-3 py-1.5 text-sm focus:border-[#2a78d6] focus:outline-none"
+          >
+            <option value={3}>Last 3 months</option>
+            <option value={6}>Last 6 months</option>
+            <option value={12}>Last 12 months</option>
+          </select>
+        </div>
+
+        {savingsTrendError && <p className="text-sm text-red-600">{getErrorMessage(savingsTrendError)}</p>}
+        {savingsTrendLoading && <p className="text-sm text-slate-500">Loading…</p>}
+
+        {savingsTrend && savingsTrend.data.every((m) => m.breakdown.length === 0) && (
+          <p className="text-sm text-slate-400">
+            No income, costs, or savings goals recorded in this range yet.
+          </p>
+        )}
+
+        {savingsTrend && savingsTrend.data.some((m) => m.breakdown.length > 0) && (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-200 text-left text-slate-500">
+                  <th className="py-2 pr-4">Month</th>
+                  <th className="py-2 pr-4">Currency</th>
+                  <th className="py-2 pr-4">Income</th>
+                  <th className="py-2 pr-4">Spent</th>
+                  <th className="py-2 pr-4">Actual saved</th>
+                  <th className="py-2 pr-4">Goal</th>
+                  <th className="py-2">Difference</th>
+                </tr>
+              </thead>
+              <tbody>
+                {savingsTrend.data.flatMap((m) =>
+                  m.breakdown.map((row) => (
+                    <tr key={`${m.year}-${m.month}-${row.currency}`} className="border-b border-slate-100">
+                      <td className="py-2 pr-4 text-slate-500">{monthLabel(m.year, m.month)}</td>
+                      <td className="py-2 pr-4 font-medium text-slate-900">{row.currency}</td>
+                      <td className="py-2 pr-4">{currencyFormatter(row.income, row.currency)}</td>
+                      <td className="py-2 pr-4">{currencyFormatter(row.spent, row.currency)}</td>
+                      <td className="py-2 pr-4">{currencyFormatter(row.actualSaved, row.currency)}</td>
+                      <td className="py-2 pr-4">{currencyFormatter(row.goalTotal, row.currency)}</td>
+                      <td className={`py-2 font-semibold ${row.difference >= 0 ? "text-green-600" : "text-red-600"}`}>
+                        {row.difference >= 0 ? "+" : ""}
+                        {currencyFormatter(row.difference, row.currency)}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

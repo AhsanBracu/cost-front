@@ -10,6 +10,7 @@ import { CostsListPage } from "./pages/CostsListPage";
 import { CostFormPage } from "./pages/CostFormPage";
 import { ProfilePage } from "./pages/ProfilePage";
 import { ReportsPage } from "./pages/ReportsPage";
+import { SavingsPage } from "./pages/SavingsPage";
 
 function App() {
   return (
@@ -28,6 +29,7 @@ function App() {
           <Route path="/costs/new" element={<CostFormPage />} />
           <Route path="/costs/:id" element={<CostFormPage />} />
           <Route path="/reports" element={<ReportsPage />} />
+          <Route path="/savings" element={<SavingsPage />} />
           <Route path="/profile" element={<ProfilePage />} />
         </Route>
       </Route>
