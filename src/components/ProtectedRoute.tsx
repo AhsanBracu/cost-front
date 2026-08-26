@@ -6,7 +6,7 @@ export function ProtectedRoute() {
   const location = useLocation();
 
   if (isLoading) {
-    return <div className="flex h-screen items-center justify-center text-slate-500">Loading…</div>;
+    return <div className="flex h-screen items-center justify-center text-ink-muted">Loading…</div>;
   }
 
   if (!token) {
@@ -20,7 +20,7 @@ export function GuestRoute() {
   const { token, isLoading } = useAuth();
 
   if (isLoading) {
-    return <div className="flex h-screen items-center justify-center text-slate-500">Loading…</div>;
+    return <div className="flex h-screen items-center justify-center text-ink-muted">Loading…</div>;
   }
 
   if (token) {

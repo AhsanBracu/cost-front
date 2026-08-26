@@ -4,9 +4,10 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CostsApi } from "../api/costs";
 import { getErrorMessage, receiptUrl } from "../lib/api";
-import { CostCategory, PaymentMethod } from "../types";
+import { useCategories } from "../lib/categoryMeta";
+import { CURRENCIES, DEFAULT_CURRENCY } from "../lib/format";
+import { PaymentMethod } from "../types";
 
-const CURRENCIES = ["SEK", "BDT", "USD", "CAD", "AUD"];
 
 interface FormState {
   amount: string;
@@ -14,7 +15,7 @@ interface FormState {
   date: string;
   place: string;
   description: string;
-  category: CostCategory;
+  category: string;
   paymentMethod: PaymentMethod;
   tags: string;
   notes: string;
@@ -22,11 +23,11 @@ interface FormState {
 
 const emptyForm: FormState = {
   amount: "",
-  currency: "USD",
+  currency: DEFAULT_CURRENCY,
   date: new Date().toISOString().slice(0, 10),
   place: "",
   description: "",
-  category: CostCategory.Other,
+  category: "",
   paymentMethod: PaymentMethod.Cash,
   tags: "",
   notes: "",
@@ -42,11 +43,22 @@ export function CostFormPage() {
   const [receipt, setReceipt] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  const { data: categories } = useCategories();
+
   const { data: existing } = useQuery({
     queryKey: ["cost", id],
     queryFn: () => CostsApi.get(id as string),
     enabled: isEditing,
   });
+
+  // Categories load async, so a new cost's form starts with none selected —
+  // fill in the first one once they arrive, without clobbering a category
+  // already set (either by the user or loaded from the cost being edited).
+  useEffect(() => {
+    if (categories?.length) {
+      setForm((f) => (f.category ? f : { ...f, category: categories[0].name }));
+    }
+  }, [categories]);
 
   useEffect(() => {
     if (existing) {
@@ -98,13 +110,13 @@ export function CostFormPage() {
 
   return (
     <div className="mx-auto max-w-2xl">
-      <h1 className="mb-6 text-2xl font-semibold text-slate-900">
+      <h1 className="mb-6 text-2xl font-semibold text-ink">
         {isEditing ? "Edit cost" : "Add cost"}
       </h1>
-      <form onSubmit={handleSubmit} className="space-y-4 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+      <form onSubmit={handleSubmit} className="space-y-4 card-lg">
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label htmlFor="amount" className="block text-sm font-medium text-slate-700">
+            <label htmlFor="amount" className="block text-sm font-medium text-ink-muted">
               Amount
             </label>
             <input
@@ -115,11 +127,11 @@ export function CostFormPage() {
               required
               value={form.amount}
               onChange={(e) => setForm((f) => ({ ...f, amount: e.target.value }))}
-              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-[#2a78d6] focus:outline-none"
+              className="input mt-1"
             />
           </div>
           <div>
-            <label htmlFor="currency" className="block text-sm font-medium text-slate-700">
+            <label htmlFor="currency" className="block text-sm font-medium text-ink-muted">
               Currency
             </label>
             <select
@@ -127,7 +139,7 @@ export function CostFormPage() {
               required
               value={form.currency}
               onChange={(e) => setForm((f) => ({ ...f, currency: e.target.value }))}
-              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-[#2a78d6] focus:outline-none"
+              className="input mt-1"
             >
               {CURRENCIES.map((currency) => (
                 <option key={currency} value={currency}>
@@ -140,7 +152,7 @@ export function CostFormPage() {
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label htmlFor="date" className="block text-sm font-medium text-slate-700">
+            <label htmlFor="date" className="block text-sm font-medium text-ink-muted">
               Date
             </label>
             <input
@@ -149,42 +161,52 @@ export function CostFormPage() {
               required
               value={form.date}
               onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))}
-              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-[#2a78d6] focus:outline-none"
+              className="input mt-1"
             />
           </div>
           <div>
-            <label htmlFor="place" className="block text-sm font-medium text-slate-700">
+            <label htmlFor="place" className="block text-sm font-medium text-ink-muted">
               Place
             </label>
             <input
               id="place"
               value={form.place}
               onChange={(e) => setForm((f) => ({ ...f, place: e.target.value }))}
-              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-[#2a78d6] focus:outline-none"
+              className="input mt-1"
             />
           </div>
         </div>
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label htmlFor="category" className="block text-sm font-medium text-slate-700">
+            <label htmlFor="category" className="block text-sm font-medium text-ink-muted">
               Category
             </label>
             <select
               id="category"
+              required
               value={form.category}
-              onChange={(e) => setForm((f) => ({ ...f, category: e.target.value as CostCategory }))}
-              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-[#2a78d6] focus:outline-none"
+              onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}
+              className="input mt-1"
             >
-              {Object.values(CostCategory).map((c) => (
-                <option key={c} value={c}>
-                  {c}
+              <option value="" disabled>
+                Select a category
+              </option>
+              {/* A cost being edited may use a category that has since been
+                  renamed or deleted — keep it selectable so saving doesn't
+                  silently reassign it. */}
+              {form.category && !categories?.some((c) => c.name === form.category) && (
+                <option value={form.category}>{form.category}</option>
+              )}
+              {categories?.map((c) => (
+                <option key={c._id} value={c.name}>
+                  {c.name}
                 </option>
               ))}
             </select>
           </div>
           <div>
-            <label htmlFor="paymentMethod" className="block text-sm font-medium text-slate-700">
+            <label htmlFor="paymentMethod" className="block text-sm font-medium text-ink-muted">
               Payment method
             </label>
             <select
@@ -193,7 +215,7 @@ export function CostFormPage() {
               onChange={(e) =>
                 setForm((f) => ({ ...f, paymentMethod: e.target.value as PaymentMethod }))
               }
-              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-[#2a78d6] focus:outline-none"
+              className="input mt-1"
             >
               {Object.values(PaymentMethod).map((p) => (
                 <option key={p} value={p}>
@@ -205,44 +227,44 @@ export function CostFormPage() {
         </div>
 
         <div>
-          <label htmlFor="description" className="block text-sm font-medium text-slate-700">
+          <label htmlFor="description" className="block text-sm font-medium text-ink-muted">
             Description
           </label>
           <input
             id="description"
             value={form.description}
             onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-            className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-[#2a78d6] focus:outline-none"
+            className="input mt-1"
           />
         </div>
 
         <div>
-          <label htmlFor="tags" className="block text-sm font-medium text-slate-700">
+          <label htmlFor="tags" className="block text-sm font-medium text-ink-muted">
             Tags (comma separated)
           </label>
           <input
             id="tags"
             value={form.tags}
             onChange={(e) => setForm((f) => ({ ...f, tags: e.target.value }))}
-            className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-[#2a78d6] focus:outline-none"
+            className="input mt-1"
           />
         </div>
 
         <div>
-          <label htmlFor="notes" className="block text-sm font-medium text-slate-700">
+          <label htmlFor="notes" className="block text-sm font-medium text-ink-muted">
             Notes
           </label>
           <textarea
             id="notes"
             value={form.notes}
             onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
-            className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-[#2a78d6] focus:outline-none"
+            className="input mt-1"
             rows={3}
           />
         </div>
 
         <div>
-          <label htmlFor="receipt" className="block text-sm font-medium text-slate-700">
+          <label htmlFor="receipt" className="block text-sm font-medium text-ink-muted">
             Receipt (image or PDF)
           </label>
           {existing?.receiptUrl && !receipt && (
@@ -250,7 +272,7 @@ export function CostFormPage() {
               href={receiptUrl(existing.receiptUrl)}
               target="_blank"
               rel="noreferrer"
-              className="mb-1 block text-sm text-[#2a78d6] underline"
+              className="mb-1 block text-sm text-accent underline"
             >
               View current receipt
             </a>
@@ -264,20 +286,20 @@ export function CostFormPage() {
           />
         </div>
 
-        {error && <p className="text-sm text-red-600">{error}</p>}
+        {error && <p className="text-sm text-down">{error}</p>}
 
         <div className="flex gap-3">
           <button
             type="submit"
             disabled={saveMutation.isPending}
-            className="rounded-md bg-[#2a78d6] px-4 py-2 text-sm font-medium text-white hover:bg-[#184f95] disabled:opacity-50"
+            className="btn btn-primary"
           >
             {saveMutation.isPending ? "Saving…" : "Save"}
           </button>
           <button
             type="button"
             onClick={() => navigate("/costs")}
-            className="rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
+            className="btn btn-ghost"
           >
             Cancel
           </button>

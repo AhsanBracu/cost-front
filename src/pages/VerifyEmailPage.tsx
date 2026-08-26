@@ -27,16 +27,16 @@ export function VerifyEmailPage() {
 
   return (
     <AuthBackground>
-      <div className="w-full max-w-sm rounded-xl border border-slate-200 bg-white p-6 text-center shadow-xl">
-        {status === "loading" && <p className="text-sm text-slate-600">Verifying your email…</p>}
+      <div className="w-full max-w-sm rounded-xl border border-line bg-surface p-6 text-center shadow-xl">
+        {status === "loading" && <p className="text-sm text-ink-muted">Verifying your email…</p>}
         {status === "success" && (
           <>
-            <h1 className="mb-2 text-xl font-semibold text-slate-900">Email verified</h1>
-            <p className="text-sm text-slate-600">You can now log in to your account.</p>
+            <h1 className="mb-2 text-xl font-semibold text-ink">Email verified</h1>
+            <p className="text-sm text-ink-muted">You can now log in to your account.</p>
           </>
         )}
-        {status === "error" && <p className="text-sm text-red-600">{error}</p>}
-        <Link to="/login" className="mt-4 inline-block text-sm text-[#2a78d6] underline">
+        {status === "error" && <p className="text-sm text-down">{error}</p>}
+        <Link to="/login" className="mt-4 inline-block text-sm text-accent underline">
           Go to log in
         </Link>
       </div>

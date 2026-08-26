@@ -34,14 +34,14 @@ export function TrendTable({ data, interval }: { data: TrendPoint[]; interval: R
   );
 
   if (rows.length === 0) {
-    return <p className="text-sm text-slate-400">No data for this range.</p>;
+    return <p className="text-sm text-ink-dim">No data for this range.</p>;
   }
 
   return (
     <div className="overflow-x-auto">
-      <table className="w-full text-sm">
+      <table className="numeric w-full text-sm">
         <thead>
-          <tr className="border-b border-slate-200 text-left text-slate-500">
+          <tr className="border-b border-line text-left text-ink-muted">
             <th className="py-2 pr-4 font-medium">Period</th>
             <th className="py-2 pr-4 font-medium">Currency</th>
             <th className="py-2 pr-4 text-right font-medium">Total</th>
@@ -50,13 +50,13 @@ export function TrendTable({ data, interval }: { data: TrendPoint[]; interval: R
         </thead>
         <tbody>
           {rows.map((row) => (
-            <tr key={`${row.period}-${row.currency}`} className="border-b border-slate-100 last:border-0">
-              <td className="py-2 pr-4 text-slate-700">{formatPeriodLabel(row.period, interval)}</td>
-              <td className="py-2 pr-4 text-slate-700">{row.currency}</td>
-              <td className="py-2 pr-4 text-right font-medium text-slate-900">
+            <tr key={`${row.period}-${row.currency}`} className="border-b border-line last:border-0">
+              <td className="py-2 pr-4 text-ink-muted">{formatPeriodLabel(row.period, interval)}</td>
+              <td className="py-2 pr-4 text-ink-muted">{row.currency}</td>
+              <td className="py-2 pr-4 text-right font-medium text-ink">
                 {currencyFormatter(row.total, row.currency)}
               </td>
-              <td className="py-2 text-right text-slate-700">{row.count}</td>
+              <td className="py-2 text-right text-ink-muted">{row.count}</td>
             </tr>
           ))}
         </tbody>
@@ -96,7 +96,7 @@ export function TrendChart({
   }, [data]);
 
   if (periods.length === 0) {
-    return <p className="text-sm text-slate-400">No data for this range.</p>;
+    return <p className="text-sm text-ink-dim">No data for this range.</p>;
   }
 
   const plotWidth = WIDTH - PADDING.left - PADDING.right;
@@ -126,7 +126,7 @@ export function TrendChart({
       {currencies.length > 1 && (
         <div className="mb-3 flex flex-wrap gap-x-4 gap-y-1">
           {currencies.map((currency) => (
-            <span key={currency} className="flex items-center gap-1.5 text-xs text-slate-600">
+            <span key={currency} className="flex items-center gap-1.5 text-xs text-ink-muted">
               <span className="inline-block h-0.5 w-4 rounded-full" style={{ backgroundColor: currencyColor(currency) }} />
               {currency}
             </span>
@@ -142,10 +142,10 @@ export function TrendChart({
               x2={WIDTH - PADDING.right}
               y1={yAt(tick)}
               y2={yAt(tick)}
-              stroke="#e1e0d9"
+              stroke="#262a34"
               strokeWidth={1}
             />
-            <text x={PADDING.left - 8} y={yAt(tick)} textAnchor="end" dominantBaseline="middle" className="fill-slate-400 text-[10px]">
+            <text x={PADDING.left - 8} y={yAt(tick)} textAnchor="end" dominantBaseline="middle" className="fill-ink-dim text-[10px]">
               {tick >= 1000 ? `${(tick / 1000).toFixed(tick % 1000 === 0 ? 0 : 1)}K` : Math.round(tick)}
             </text>
           </g>
@@ -158,7 +158,7 @@ export function TrendChart({
               x={xAt(i)}
               y={HEIGHT - PADDING.bottom + 16}
               textAnchor="middle"
-              className="fill-slate-400 text-[10px]"
+              className="fill-ink-dim text-[10px]"
             >
               {formatPeriodLabel(period, interval)}
             </text>
@@ -180,7 +180,7 @@ export function TrendChart({
               {areaPath && <path d={areaPath} fill={color} opacity={0.1} />}
               <path d={linePath} fill="none" stroke={color} strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
               {values.map((v, i) => (
-                <circle key={i} cx={xAt(i)} cy={yAt(v)} r={4} fill={color} stroke="#fff" strokeWidth={2} />
+                <circle key={i} cx={xAt(i)} cy={yAt(v)} r={4} fill={color} stroke="#14161c" strokeWidth={2} />
               ))}
             </g>
           );
@@ -192,7 +192,7 @@ export function TrendChart({
             x2={xAt(hoverIndex)}
             y1={PADDING.top}
             y2={HEIGHT - PADDING.bottom}
-            stroke="#c3c2b7"
+            stroke="#4a5163"
             strokeWidth={1}
           />
         )}
@@ -210,16 +210,16 @@ export function TrendChart({
 
       {hoveredPeriod && (
         <div
-          className="pointer-events-none absolute top-0 z-10 -translate-x-1/2 rounded-md border border-slate-200 bg-white px-3 py-2 text-xs shadow-md"
+          className="pointer-events-none absolute top-0 z-10 -translate-x-1/2 rounded-md border border-line bg-surface px-3 py-2 text-xs shadow-md"
           style={{ left: `${tooltipLeftPct}%` }}
         >
-          <p className="mb-1 font-medium text-slate-700">{formatPeriodLabel(hoveredPeriod, interval)}</p>
+          <p className="mb-1 font-medium text-ink-muted">{formatPeriodLabel(hoveredPeriod, interval)}</p>
           {currencies.map((currency) => {
             const value = seriesByCurrency.get(currency)?.get(hoveredPeriod) ?? 0;
             return (
-              <p key={currency} className="flex items-center gap-1.5 text-slate-600">
+              <p key={currency} className="flex items-center gap-1.5 text-ink-muted">
                 <span className="inline-block h-2 w-2 rounded-full" style={{ backgroundColor: currencyColor(currency) }} />
-                <span className="font-semibold text-slate-900">{currencyFormatter(value, currency)}</span>
+                <span className="font-semibold text-ink">{currencyFormatter(value, currency)}</span>
                 {currencies.length > 1 && <span>{currency}</span>}
               </p>
             );

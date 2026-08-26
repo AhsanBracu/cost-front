@@ -1,24 +1,159 @@
 @import "tailwindcss";
 
+/* Dark "fintech" palette. Surfaces step up in lightness as they come
+   forward (canvas -> surface -> raised); accent is reserved for interactive
+   things, so up/down/warn stay unambiguously about money direction. */
+@theme {
+  --color-canvas: #0a0b0f;
+  --color-surface: #14161c;
+  --color-raised: #1b1e26;
+  --color-line: #262a34;
+  --color-line-strong: #343a49;
+
+  --color-ink: #e8eaef;
+  --color-ink-muted: #98a0b3;
+  --color-ink-dim: #6b7285;
+
+  --color-accent: #7c6cff;
+  --color-accent-hover: #6b57ff;
+  --color-accent-soft: #211d3d;
+
+  --color-up: #00d68f;
+  --color-down: #ff5c5c;
+  --color-warn: #ffb020;
+}
+
 :root {
-  color-scheme: light;
+  color-scheme: dark;
 }
 
 body {
   margin: 0;
-  font-family: system-ui, "Segoe UI", Roboto, sans-serif;
+  background-color: var(--color-canvas);
+  color: var(--color-ink);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
 }
 
+/* Amounts line up column-to-column only if the digits are fixed-width. */
+.numeric {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+
+/* --- Component classes -------------------------------------------------
+   These replace the long Tailwind strings that were repeated across every
+   page, so the look is defined once instead of in ~40 places. */
+
+.card {
+  border-radius: 0.875rem;
+  border: 1px solid var(--color-line);
+  background-color: var(--color-surface);
+  padding: 1.25rem;
+}
+
+.card-lg {
+  border-radius: 0.875rem;
+  border: 1px solid var(--color-line);
+  background-color: var(--color-surface);
+  padding: 1.5rem;
+}
+
+.input {
+  width: 100%;
+  border-radius: 0.5rem;
+  border: 1px solid var(--color-line-strong);
+  background-color: var(--color-canvas);
+  color: var(--color-ink);
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.input::placeholder {
+  color: var(--color-ink-dim);
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 25%, transparent);
+}
+
+.input:disabled {
+  background-color: var(--color-surface);
+  color: var(--color-ink-dim);
+  cursor: not-allowed;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 0.5rem;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background-color: var(--color-accent);
+  color: #fff;
+  border: 1px solid var(--color-accent);
+}
+
+.btn-primary:hover:not(:disabled) {
+  background-color: var(--color-accent-hover);
+  border-color: var(--color-accent-hover);
+}
+
+.btn-ghost {
+  background-color: transparent;
+  color: var(--color-ink-muted);
+  border: 1px solid var(--color-line-strong);
+}
+
+.btn-ghost:hover:not(:disabled) {
+  background-color: var(--color-raised);
+  color: var(--color-ink);
+}
+
+/* Native controls don't inherit the dark scheme reliably across browsers. */
 input,
 select,
 textarea {
-  background-color: #fff;
-  color: #0f172a;
+  background-color: var(--color-canvas);
+  color: var(--color-ink);
+}
+
+select option {
+  background-color: var(--color-surface);
+  color: var(--color-ink);
+}
+
+input[type="color"] {
+  padding: 2px;
+  cursor: pointer;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="month"]::-webkit-calendar-picker-indicator {
+  filter: invert(0.7);
+  cursor: pointer;
 }
 
 input:-webkit-autofill,
 input:-webkit-autofill:hover,
 input:-webkit-autofill:focus {
-  -webkit-text-fill-color: #0f172a;
+  -webkit-text-fill-color: var(--color-ink);
+  -webkit-box-shadow: 0 0 0 1000px var(--color-canvas) inset;
   transition: background-color 600000s 0s, color 600000s 0s;
 }

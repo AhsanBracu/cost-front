@@ -4,9 +4,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { IncomeApi } from "../api/income";
 import { SavingsGoalsApi } from "../api/savingsGoals";
 import { getErrorMessage } from "../lib/api";
-import { currencyFormatter } from "../lib/format";
+import { CURRENCIES, DEFAULT_CURRENCY, currencyFormatter } from "../lib/format";
 
-const CURRENCIES = ["SEK", "BDT", "USD", "CAD", "AUD"];
 
 const currentMonthValue = () => new Date().toISOString().slice(0, 7); // "YYYY-MM"
 
@@ -18,7 +17,7 @@ function parseMonthValue(value: string): { year: number; month: number } {
 function DifferenceBadge({ amount, currency }: { amount: number; currency: string }) {
   const isPositive = amount >= 0;
   return (
-    <span className={`font-semibold ${isPositive ? "text-green-600" : "text-red-600"}`}>
+    <span className={`font-semibold ${isPositive ? "text-up" : "text-down"}`}>
       {isPositive ? "+" : ""}
       {currencyFormatter(amount, currency)}
     </span>
@@ -43,13 +42,13 @@ export function SavingsPage() {
   });
   const existingIncome = incomes?.[0];
 
-  const [incomeForm, setIncomeForm] = useState({ amount: "", currency: "USD" });
+  const [incomeForm, setIncomeForm] = useState({ amount: "", currency: DEFAULT_CURRENCY });
   const [incomeError, setIncomeError] = useState<string | null>(null);
 
   useEffect(() => {
     setIncomeForm({
       amount: existingIncome ? String(existingIncome.amount) : "",
-      currency: existingIncome?.currency ?? "USD",
+      currency: existingIncome?.currency ?? DEFAULT_CURRENCY,
     });
     setIncomeError(null);
   }, [existingIncome, monthValue]);
@@ -75,7 +74,7 @@ export function SavingsPage() {
     queryFn: () => SavingsGoalsApi.list({ year, month }),
   });
 
-  const [goalForm, setGoalForm] = useState({ purpose: "", targetAmount: "", currency: "USD" });
+  const [goalForm, setGoalForm] = useState({ purpose: "", targetAmount: "", currency: DEFAULT_CURRENCY });
   const [goalError, setGoalError] = useState<string | null>(null);
 
   const addGoalMutation = useMutation({
@@ -114,26 +113,26 @@ export function SavingsPage() {
   return (
     <div>
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-semibold text-slate-900">Savings</h1>
+        <h1 className="text-2xl font-semibold text-ink">Savings</h1>
         <input
           aria-label="Month"
           type="month"
           value={monthValue}
           onChange={(e) => setMonthValue(e.target.value)}
-          className="rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-[#2a78d6] focus:outline-none"
+          className="input"
         />
       </div>
 
       <div className="mb-6 grid gap-6 sm:grid-cols-2">
         {/* Income */}
-        <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-          <h2 className="mb-4 text-sm font-semibold text-slate-700">
+        <div className="card-lg">
+          <h2 className="mb-4 text-sm font-semibold text-ink-muted">
             Income for {monthValue}
           </h2>
           <form onSubmit={handleIncomeSubmit} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label htmlFor="income-amount" className="block text-sm font-medium text-slate-700">
+                <label htmlFor="income-amount" className="block text-sm font-medium text-ink-muted">
                   Amount
                 </label>
                 <input
@@ -144,11 +143,11 @@ export function SavingsPage() {
                   required
                   value={incomeForm.amount}
                   onChange={(e) => setIncomeForm((f) => ({ ...f, amount: e.target.value }))}
-                  className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-[#2a78d6] focus:outline-none"
+                  className="input mt-1"
                 />
               </div>
               <div>
-                <label htmlFor="income-currency" className="block text-sm font-medium text-slate-700">
+                <label htmlFor="income-currency" className="block text-sm font-medium text-ink-muted">
                   Currency
                 </label>
                 <select
@@ -156,7 +155,7 @@ export function SavingsPage() {
                   required
                   value={incomeForm.currency}
                   onChange={(e) => setIncomeForm((f) => ({ ...f, currency: e.target.value }))}
-                  className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-[#2a78d6] focus:outline-none"
+                  className="input mt-1"
                 >
                   {CURRENCIES.map((currency) => (
                     <option key={currency} value={currency}>
@@ -166,11 +165,11 @@ export function SavingsPage() {
                 </select>
               </div>
             </div>
-            {incomeError && <p className="text-sm text-red-600">{incomeError}</p>}
+            {incomeError && <p className="text-sm text-down">{incomeError}</p>}
             <button
               type="submit"
               disabled={saveIncomeMutation.isPending}
-              className="rounded-md bg-[#2a78d6] px-4 py-2 text-sm font-medium text-white hover:bg-[#184f95] disabled:opacity-50"
+              className="btn btn-primary"
             >
               {saveIncomeMutation.isPending ? "Saving…" : existingIncome ? "Update income" : "Save income"}
             </button>
@@ -178,30 +177,30 @@ export function SavingsPage() {
         </div>
 
         {/* Savings goals */}
-        <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-          <h2 className="mb-4 text-sm font-semibold text-slate-700">
+        <div className="card-lg">
+          <h2 className="mb-4 text-sm font-semibold text-ink-muted">
             Savings goals for {monthValue}
           </h2>
 
           <div className="mb-4 space-y-2">
             {goals?.length === 0 && (
-              <p className="text-sm text-slate-400">No savings goals set for this month yet.</p>
+              <p className="text-sm text-ink-dim">No savings goals set for this month yet.</p>
             )}
             {goals?.map((goal) => (
               <div
                 key={goal._id}
-                className="flex items-center justify-between rounded-md border border-slate-200 px-3 py-2"
+                className="flex items-center justify-between rounded-md border border-line px-3 py-2"
               >
                 <div>
-                  <p className="text-sm font-medium text-slate-900">{goal.purpose}</p>
-                  <p className="text-xs text-slate-500">
+                  <p className="text-sm font-medium text-ink">{goal.purpose}</p>
+                  <p className="text-xs text-ink-muted">
                     {currencyFormatter(goal.targetAmount, goal.currency)}
                   </p>
                 </div>
                 <button
                   type="button"
                   onClick={() => deleteGoalMutation.mutate(goal._id)}
-                  className="text-sm text-red-500 hover:text-red-700"
+                  className="text-sm text-down hover:text-down"
                 >
                   Delete
                 </button>
@@ -209,9 +208,9 @@ export function SavingsPage() {
             ))}
           </div>
 
-          <form onSubmit={handleGoalSubmit} className="space-y-3 border-t border-slate-100 pt-4">
+          <form onSubmit={handleGoalSubmit} className="space-y-3 border-t border-line pt-4">
             <div>
-              <label htmlFor="goal-purpose" className="block text-sm font-medium text-slate-700">
+              <label htmlFor="goal-purpose" className="block text-sm font-medium text-ink-muted">
                 Purpose
               </label>
               <input
@@ -220,12 +219,12 @@ export function SavingsPage() {
                 placeholder="e.g. Vacation, Emergency fund"
                 value={goalForm.purpose}
                 onChange={(e) => setGoalForm((f) => ({ ...f, purpose: e.target.value }))}
-                className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-[#2a78d6] focus:outline-none"
+                className="input mt-1"
               />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label htmlFor="goal-amount" className="block text-sm font-medium text-slate-700">
+                <label htmlFor="goal-amount" className="block text-sm font-medium text-ink-muted">
                   Target amount
                 </label>
                 <input
@@ -236,11 +235,11 @@ export function SavingsPage() {
                   required
                   value={goalForm.targetAmount}
                   onChange={(e) => setGoalForm((f) => ({ ...f, targetAmount: e.target.value }))}
-                  className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-[#2a78d6] focus:outline-none"
+                  className="input mt-1"
                 />
               </div>
               <div>
-                <label htmlFor="goal-currency" className="block text-sm font-medium text-slate-700">
+                <label htmlFor="goal-currency" className="block text-sm font-medium text-ink-muted">
                   Currency
                 </label>
                 <select
@@ -248,7 +247,7 @@ export function SavingsPage() {
                   required
                   value={goalForm.currency}
                   onChange={(e) => setGoalForm((f) => ({ ...f, currency: e.target.value }))}
-                  className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-[#2a78d6] focus:outline-none"
+                  className="input mt-1"
                 >
                   {CURRENCIES.map((currency) => (
                     <option key={currency} value={currency}>
@@ -258,11 +257,11 @@ export function SavingsPage() {
                 </select>
               </div>
             </div>
-            {goalError && <p className="text-sm text-red-600">{goalError}</p>}
+            {goalError && <p className="text-sm text-down">{goalError}</p>}
             <button
               type="submit"
               disabled={addGoalMutation.isPending}
-              className="rounded-md bg-[#2a78d6] px-4 py-2 text-sm font-medium text-white hover:bg-[#184f95] disabled:opacity-50"
+              className="btn btn-primary"
             >
               {addGoalMutation.isPending ? "Adding…" : "+ Add goal"}
             </button>
@@ -271,23 +270,23 @@ export function SavingsPage() {
       </div>
 
       {/* Summary */}
-      <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-        <h2 className="mb-4 text-sm font-semibold text-slate-700">Summary for {monthValue}</h2>
+      <div className="card-lg">
+        <h2 className="mb-4 text-sm font-semibold text-ink-muted">Summary for {monthValue}</h2>
 
-        {summaryError && <p className="text-sm text-red-600">{getErrorMessage(summaryError)}</p>}
-        {summaryLoading && <p className="text-sm text-slate-500">Loading…</p>}
+        {summaryError && <p className="text-sm text-down">{getErrorMessage(summaryError)}</p>}
+        {summaryLoading && <p className="text-sm text-ink-muted">Loading…</p>}
 
         {summary && summary.breakdown.length === 0 && (
-          <p className="text-sm text-slate-400">
+          <p className="text-sm text-ink-dim">
             No income, costs, or savings goals recorded for this month yet.
           </p>
         )}
 
         {summary && summary.breakdown.length > 0 && (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="numeric w-full text-sm">
               <thead>
-                <tr className="border-b border-slate-200 text-left text-slate-500">
+                <tr className="border-b border-line text-left text-ink-muted">
                   <th className="py-2 pr-4">Currency</th>
                   <th className="py-2 pr-4">Income</th>
                   <th className="py-2 pr-4">Spent</th>
@@ -298,8 +297,8 @@ export function SavingsPage() {
               </thead>
               <tbody>
                 {summary.breakdown.map((row) => (
-                  <tr key={row.currency} className="border-b border-slate-100">
-                    <td className="py-2 pr-4 font-medium text-slate-900">{row.currency}</td>
+                  <tr key={row.currency} className="border-b border-line">
+                    <td className="py-2 pr-4 font-medium text-ink">{row.currency}</td>
                     <td className="py-2 pr-4">{currencyFormatter(row.income, row.currency)}</td>
                     <td className="py-2 pr-4">{currencyFormatter(row.spent, row.currency)}</td>
                     <td className="py-2 pr-4">{currencyFormatter(row.actualSaved, row.currency)}</td>

@@ -5,7 +5,7 @@ import { ReportsApi } from "../api/reports";
 import { SavingsGoalsApi } from "../api/savingsGoals";
 import { TrendChart, TrendTable } from "../components/TrendChart";
 import { getErrorMessage } from "../lib/api";
-import { CATEGORY_COLORS } from "../lib/categoryMeta";
+import { useCategoryColor } from "../lib/categoryMeta";
 import { CATEGORICAL_PALETTE, currencyFormatter } from "../lib/format";
 import type { CategoryTotal, PaymentMethodTotal, ReportInterval, ReportQuery, SavingsTrendQuery } from "../types";
 
@@ -56,11 +56,11 @@ function computeDeltaPct(current: number, previous: number): number | null {
 
 function DeltaBadge({ pct, tone = "neutral" }: { pct: number | null | undefined; tone?: "spend" | "neutral" }) {
   if (pct === undefined) return null;
-  if (pct === null) return <span className="text-xs font-medium text-slate-400">new</span>;
+  if (pct === null) return <span className="text-xs font-medium text-ink-dim">new</span>;
 
   const isFlat = Math.abs(pct) < 0.5;
   const isUp = pct > 0;
-  const colorClass = isFlat ? "text-slate-400" : tone === "spend" ? (isUp ? "text-red-600" : "text-green-600") : "text-slate-500";
+  const colorClass = isFlat ? "text-ink-dim" : tone === "spend" ? (isUp ? "text-down" : "text-up") : "text-ink-muted";
   const arrow = isFlat ? "→" : isUp ? "↑" : "↓";
 
   return (
@@ -82,10 +82,10 @@ function StatTile({
   delta?: ReactNode;
 }) {
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-      <p className="text-sm text-slate-500">{label}</p>
-      <p className="mt-1 truncate text-2xl font-semibold text-slate-900">{value}</p>
-      {sub && <p className="mt-0.5 text-xs text-slate-400">{sub}</p>}
+    <div className="card">
+      <p className="text-sm text-ink-muted">{label}</p>
+      <p className="numeric mt-1 truncate text-2xl font-semibold text-ink">{value}</p>
+      {sub && <p className="mt-0.5 text-xs text-ink-dim">{sub}</p>}
       {delta && <p className="mt-1">{delta}</p>}
     </div>
   );
@@ -115,14 +115,14 @@ function BarRow({
 }) {
   return (
     <div className="flex items-center gap-3">
-      <span className="flex w-32 shrink-0 items-center gap-1.5 truncate text-sm text-slate-700">
+      <span className="flex w-32 shrink-0 items-center gap-1.5 truncate text-sm text-ink-muted">
         <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: dot }} />
         {label}
       </span>
-      <div className="h-2 flex-1 rounded-full bg-slate-100">
+      <div className="h-2 flex-1 rounded-full bg-raised">
         <div className="h-2 rounded-full" style={{ width: `${pct}%`, backgroundColor: dot }} />
       </div>
-      <span className="flex w-40 shrink-0 items-baseline justify-end gap-2 text-right text-sm font-medium text-slate-900" title={countLabel}>
+      <span className="flex w-40 shrink-0 items-baseline justify-end gap-2 text-right text-sm font-medium text-ink" title={countLabel}>
         {amountLabel}
         <DeltaBadge pct={deltaPct} tone="spend" />
       </span>
@@ -150,6 +150,7 @@ export function ReportsPage() {
   const [compareEnabled, setCompareEnabled] = useState(true);
   const [formState, setFormState] = useState(() => ({ ...getDefaultRange(), interval: "month" as ReportInterval }));
   const [savingsMonthsBack, setSavingsMonthsBack] = useState(6);
+  const categoryColor = useCategoryColor();
 
   const savingsRange = useMemo(() => getSavingsMonthRange(savingsMonthsBack), [savingsMonthsBack]);
   const { data: savingsTrend, isLoading: savingsTrendLoading, error: savingsTrendError } = useQuery({
@@ -272,31 +273,31 @@ export function ReportsPage() {
 
   return (
     <div>
-      <h1 className="mb-6 text-2xl font-semibold text-slate-900">Reports</h1>
+      <h1 className="mb-6 text-2xl font-semibold text-ink">Reports</h1>
 
       <form
         onSubmit={applyFilters}
-        className="mb-6 grid grid-cols-2 gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:grid-cols-4"
+        className="mb-6 grid grid-cols-2 gap-3 card sm:grid-cols-4"
       >
         <input
           aria-label="Start date"
           type="date"
           value={formState.startDate}
           onChange={(e) => setFormState((s) => ({ ...s, startDate: e.target.value }))}
-          className="rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-[#2a78d6] focus:outline-none"
+          className="input"
         />
         <input
           aria-label="End date"
           type="date"
           value={formState.endDate}
           onChange={(e) => setFormState((s) => ({ ...s, endDate: e.target.value }))}
-          className="rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-[#2a78d6] focus:outline-none"
+          className="input"
         />
         <select
           aria-label="Trend interval"
           value={formState.interval}
           onChange={(e) => setFormState((s) => ({ ...s, interval: e.target.value as ReportInterval }))}
-          className="rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-[#2a78d6] focus:outline-none"
+          className="input"
         >
           <option value="day">Daily trend</option>
           <option value="week">Weekly trend</option>
@@ -305,28 +306,28 @@ export function ReportsPage() {
         <div className="flex gap-2">
           <button
             type="submit"
-            className="w-full rounded-md bg-[#2a78d6] px-3 py-2 text-sm font-medium text-white hover:bg-[#184f95]"
+            className="w-full btn btn-primary"
           >
             Apply
           </button>
           <button
             type="button"
             onClick={resetFilters}
-            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
+            className="w-full btn btn-ghost"
           >
             Reset
           </button>
         </div>
-        <label className="col-span-2 flex items-center gap-2 text-sm text-slate-600 sm:col-span-4">
+        <label className="col-span-2 flex items-center gap-2 text-sm text-ink-muted sm:col-span-4">
           <input
             type="checkbox"
             checked={compareEnabled}
             onChange={(e) => setCompareEnabled(e.target.checked)}
-            className="h-4 w-4 rounded border-slate-300 text-[#2a78d6] focus:ring-[#2a78d6]"
+            className="h-4 w-4 rounded border-line-strong text-accent focus:ring-accent"
           />
           Compare to previous period
           {compareEnabled && previousRange && (
-            <span className="text-xs text-slate-400">
+            <span className="text-xs text-ink-dim">
               ({previousRange.startDate} – {previousRange.endDate})
             </span>
           )}
@@ -334,12 +335,12 @@ export function ReportsPage() {
       </form>
 
       {(summaryError || trendError) && (
-        <p className="mb-4 text-sm text-red-600">{getErrorMessage(summaryError ?? trendError)}</p>
+        <p className="mb-4 text-sm text-down">{getErrorMessage(summaryError ?? trendError)}</p>
       )}
-      {(summaryLoading || trendLoading) && <p className="text-sm text-slate-500">Loading…</p>}
+      {(summaryLoading || trendLoading) && <p className="text-sm text-ink-muted">Loading…</p>}
 
       {summary && !hasData && (
-        <div className="rounded-xl border border-dashed border-slate-300 bg-white py-10 text-center text-slate-400">
+        <div className="rounded-xl border border-dashed border-line-strong bg-surface py-10 text-center text-ink-dim">
           No cost data for this range.
         </div>
       )}
@@ -364,7 +365,7 @@ export function ReportsPage() {
                   <span className="flex items-center gap-2 text-base">
                     <span
                       className="h-3 w-3 shrink-0 rounded-full"
-                      style={{ backgroundColor: CATEGORY_COLORS[categoryRows[0].category] }}
+                      style={{ backgroundColor: categoryColor(categoryRows[0].category) }}
                     />
                     {categoryRows[0].category}
                   </span>
@@ -376,15 +377,15 @@ export function ReportsPage() {
             <StatTile label="Top payment method" value={paymentRows[0]?.paymentMethod ?? "—"} />
           </div>
 
-          <div className="mb-6 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="mb-6 card">
             <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-slate-700">Spending trend</h2>
-              <div className="flex rounded-md border border-slate-300 p-0.5 text-sm">
+              <h2 className="text-sm font-semibold text-ink-muted">Spending trend</h2>
+              <div className="flex rounded-md border border-line-strong p-0.5 text-sm">
                 <button
                   type="button"
                   onClick={() => setTrendView("chart")}
                   className={`rounded px-3 py-1 font-medium ${
-                    trendView === "chart" ? "bg-[#2a78d6] text-white" : "text-slate-600 hover:bg-slate-100"
+                    trendView === "chart" ? "bg-accent text-white" : "text-ink-muted hover:bg-raised"
                   }`}
                 >
                   Graph
@@ -393,7 +394,7 @@ export function ReportsPage() {
                   type="button"
                   onClick={() => setTrendView("table")}
                   className={`rounded px-3 py-1 font-medium ${
-                    trendView === "table" ? "bg-[#2a78d6] text-white" : "text-slate-600 hover:bg-slate-100"
+                    trendView === "table" ? "bg-accent text-white" : "text-ink-muted hover:bg-raised"
                   }`}
                 >
                   Table
@@ -407,13 +408,13 @@ export function ReportsPage() {
           </div>
 
           <div className="mb-6 grid gap-6 sm:grid-cols-2">
-            <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-              <h2 className="mb-4 text-sm font-semibold text-slate-700">By category</h2>
+            <div className="card">
+              <h2 className="mb-4 text-sm font-semibold text-ink-muted">By category</h2>
               <div className="space-y-3">
                 {categoryRows.map((row) => (
                   <BarRow
                     key={row.category}
-                    dot={CATEGORY_COLORS[row.category]}
+                    dot={categoryColor(row.category)}
                     label={row.category}
                     pct={(row.primaryTotal / maxCategoryTotal) * 100}
                     amountLabel={joinCurrencyTotals(row.totals)}
@@ -424,13 +425,13 @@ export function ReportsPage() {
               </div>
             </div>
 
-            <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-              <h2 className="mb-4 text-sm font-semibold text-slate-700">By payment method</h2>
+            <div className="card">
+              <h2 className="mb-4 text-sm font-semibold text-ink-muted">By payment method</h2>
               <div className="space-y-3">
                 {paymentRows.map((row) => (
                   <BarRow
                     key={row.paymentMethod}
-                    dot="#2a78d6"
+                    dot="#7c6cff"
                     label={row.paymentMethod}
                     pct={(row.primaryTotal / maxPaymentTotal) * 100}
                     amountLabel={joinCurrencyTotals(row.totals)}
@@ -444,14 +445,14 @@ export function ReportsPage() {
         </>
       )}
 
-      <div className="mt-6 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="mt-6 card">
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-slate-700">Income &amp; savings trend</h2>
+          <h2 className="text-sm font-semibold text-ink-muted">Income &amp; savings trend</h2>
           <select
             aria-label="Months back"
             value={savingsMonthsBack}
             onChange={(e) => setSavingsMonthsBack(Number(e.target.value))}
-            className="rounded-md border border-slate-300 px-3 py-1.5 text-sm focus:border-[#2a78d6] focus:outline-none"
+            className="rounded-md border border-line-strong px-3 py-1.5 text-sm focus:border-accent focus:outline-none"
           >
             <option value={3}>Last 3 months</option>
             <option value={6}>Last 6 months</option>
@@ -459,20 +460,20 @@ export function ReportsPage() {
           </select>
         </div>
 
-        {savingsTrendError && <p className="text-sm text-red-600">{getErrorMessage(savingsTrendError)}</p>}
-        {savingsTrendLoading && <p className="text-sm text-slate-500">Loading…</p>}
+        {savingsTrendError && <p className="text-sm text-down">{getErrorMessage(savingsTrendError)}</p>}
+        {savingsTrendLoading && <p className="text-sm text-ink-muted">Loading…</p>}
 
         {savingsTrend && savingsTrend.data.every((m) => m.breakdown.length === 0) && (
-          <p className="text-sm text-slate-400">
+          <p className="text-sm text-ink-dim">
             No income, costs, or savings goals recorded in this range yet.
           </p>
         )}
 
         {savingsTrend && savingsTrend.data.some((m) => m.breakdown.length > 0) && (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="numeric w-full text-sm">
               <thead>
-                <tr className="border-b border-slate-200 text-left text-slate-500">
+                <tr className="border-b border-line text-left text-ink-muted">
                   <th className="py-2 pr-4">Month</th>
                   <th className="py-2 pr-4">Currency</th>
                   <th className="py-2 pr-4">Income</th>
@@ -485,14 +486,14 @@ export function ReportsPage() {
               <tbody>
                 {savingsTrend.data.flatMap((m) =>
                   m.breakdown.map((row) => (
-                    <tr key={`${m.year}-${m.month}-${row.currency}`} className="border-b border-slate-100">
-                      <td className="py-2 pr-4 text-slate-500">{monthLabel(m.year, m.month)}</td>
-                      <td className="py-2 pr-4 font-medium text-slate-900">{row.currency}</td>
+                    <tr key={`${m.year}-${m.month}-${row.currency}`} className="border-b border-line">
+                      <td className="py-2 pr-4 text-ink-muted">{monthLabel(m.year, m.month)}</td>
+                      <td className="py-2 pr-4 font-medium text-ink">{row.currency}</td>
                       <td className="py-2 pr-4">{currencyFormatter(row.income, row.currency)}</td>
                       <td className="py-2 pr-4">{currencyFormatter(row.spent, row.currency)}</td>
                       <td className="py-2 pr-4">{currencyFormatter(row.actualSaved, row.currency)}</td>
                       <td className="py-2 pr-4">{currencyFormatter(row.goalTotal, row.currency)}</td>
-                      <td className={`py-2 font-semibold ${row.difference >= 0 ? "text-green-600" : "text-red-600"}`}>
+                      <td className={`py-2 font-semibold ${row.difference >= 0 ? "text-up" : "text-down"}`}>
                         {row.difference >= 0 ? "+" : ""}
                         {currencyFormatter(row.difference, row.currency)}
                       </td>

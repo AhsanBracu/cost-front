@@ -11,6 +11,8 @@ import { CostFormPage } from "./pages/CostFormPage";
 import { ProfilePage } from "./pages/ProfilePage";
 import { ReportsPage } from "./pages/ReportsPage";
 import { SavingsPage } from "./pages/SavingsPage";
+import { CategoriesPage } from "./pages/CategoriesPage";
+import { BudgetPage } from "./pages/BudgetPage";
 
 function App() {
   return (
@@ -30,6 +32,8 @@ function App() {
           <Route path="/costs/:id" element={<CostFormPage />} />
           <Route path="/reports" element={<ReportsPage />} />
           <Route path="/savings" element={<SavingsPage />} />
+          <Route path="/budget" element={<BudgetPage />} />
+          <Route path="/categories" element={<CategoriesPage />} />
           <Route path="/profile" element={<ProfilePage />} />
         </Route>
       </Route>

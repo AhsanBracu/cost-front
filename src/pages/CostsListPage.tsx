@@ -4,9 +4,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { CostsApi } from "../api/costs";
 import { getErrorMessage, receiptUrl } from "../lib/api";
-import { CategoryBadge, CATEGORY_COLORS } from "../lib/categoryMeta";
+import { CategoryBadge, useCategories, useCategoryColor } from "../lib/categoryMeta";
 import { currencyFormatter } from "../lib/format";
-import { CostCategory, PaymentMethod } from "../types";
+import { PaymentMethod } from "../types";
 import type { CostListQuery } from "../types";
 
 const DEFAULT_FILTERS: CostListQuery = {
@@ -23,10 +23,10 @@ const STATS_SAMPLE_SIZE = 100;
 
 function StatTile({ label, value, sub }: { label: string; value: ReactNode; sub?: string }) {
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-      <p className="text-sm text-slate-500">{label}</p>
-      <p className="mt-1 truncate text-2xl font-semibold text-slate-900">{value}</p>
-      {sub && <p className="mt-0.5 text-xs text-slate-400">{sub}</p>}
+    <div className="card">
+      <p className="text-sm text-ink-muted">{label}</p>
+      <p className="numeric mt-1 truncate text-2xl font-semibold text-ink">{value}</p>
+      {sub && <p className="mt-0.5 text-xs text-ink-dim">{sub}</p>}
     </div>
   );
 }
@@ -43,6 +43,8 @@ export function CostsListPage() {
     maxAmount: "",
   });
   const queryClient = useQueryClient();
+  const { data: categories } = useCategories();
+  const categoryColor = useCategoryColor();
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["costs", filters],
@@ -66,9 +68,7 @@ export function CostsListPage() {
       totalsByCurrency.set(item.currency, (totalsByCurrency.get(item.currency) ?? 0) + item.amount);
       countByCategory.set(item.category, (countByCategory.get(item.category) ?? 0) + 1);
     }
-    const topCategory = [...countByCategory.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] as
-      | CostCategory
-      | undefined;
+    const topCategory = [...countByCategory.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
 
     return {
       count: statsData.total,
@@ -88,7 +88,7 @@ export function CostsListPage() {
     setFilters({
       ...DEFAULT_FILTERS,
       search: formState.search || undefined,
-      category: (formState.category || undefined) as CostCategory | undefined,
+      category: formState.category || undefined,
       paymentMethod: (formState.paymentMethod || undefined) as PaymentMethod | undefined,
       startDate: formState.startDate || undefined,
       endDate: formState.endDate || undefined,
@@ -119,10 +119,10 @@ export function CostsListPage() {
   return (
     <div>
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-semibold text-slate-900">Costs</h1>
+        <h1 className="text-2xl font-semibold text-ink">Costs</h1>
         <Link
           to="/costs/new"
-          className="rounded-md bg-[#2a78d6] px-4 py-2 text-sm font-medium text-white hover:bg-[#184f95]"
+          className="btn btn-primary"
         >
           + Add cost
         </Link>
@@ -153,7 +153,7 @@ export function CostsListPage() {
                 <span className="flex items-center gap-2">
                   <span
                     className="h-3 w-3 shrink-0 rounded-full"
-                    style={{ backgroundColor: CATEGORY_COLORS[stats.topCategory] }}
+                    style={{ backgroundColor: categoryColor(stats.topCategory) }}
                   />
                   {stats.topCategory}
                 </span>
@@ -167,25 +167,25 @@ export function CostsListPage() {
 
       <form
         onSubmit={applyFilters}
-        className="mb-6 grid grid-cols-2 gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:grid-cols-4"
+        className="mb-6 grid grid-cols-2 gap-3 card sm:grid-cols-4"
       >
         <input
           aria-label="Search"
           placeholder="Search"
           value={formState.search}
           onChange={(e) => setFormState((s) => ({ ...s, search: e.target.value }))}
-          className="rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-[#2a78d6] focus:outline-none"
+          className="input"
         />
         <select
           aria-label="Category"
           value={formState.category}
           onChange={(e) => setFormState((s) => ({ ...s, category: e.target.value }))}
-          className="rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-[#2a78d6] focus:outline-none"
+          className="input"
         >
           <option value="">All categories</option>
-          {Object.values(CostCategory).map((c) => (
-            <option key={c} value={c}>
-              {c}
+          {categories?.map((c) => (
+            <option key={c._id} value={c.name}>
+              {c.name}
             </option>
           ))}
         </select>
@@ -193,7 +193,7 @@ export function CostsListPage() {
           aria-label="Payment method"
           value={formState.paymentMethod}
           onChange={(e) => setFormState((s) => ({ ...s, paymentMethod: e.target.value }))}
-          className="rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-[#2a78d6] focus:outline-none"
+          className="input"
         >
           <option value="">All payment methods</option>
           {Object.values(PaymentMethod).map((p) => (
@@ -209,7 +209,7 @@ export function CostsListPage() {
             placeholder="Min"
             value={formState.minAmount}
             onChange={(e) => setFormState((s) => ({ ...s, minAmount: e.target.value }))}
-            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-[#2a78d6] focus:outline-none"
+            className="input"
           />
           <input
             aria-label="Maximum amount"
@@ -217,7 +217,7 @@ export function CostsListPage() {
             placeholder="Max"
             value={formState.maxAmount}
             onChange={(e) => setFormState((s) => ({ ...s, maxAmount: e.target.value }))}
-            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-[#2a78d6] focus:outline-none"
+            className="input"
           />
         </div>
         <input
@@ -225,63 +225,63 @@ export function CostsListPage() {
           type="date"
           value={formState.startDate}
           onChange={(e) => setFormState((s) => ({ ...s, startDate: e.target.value }))}
-          className="rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-[#2a78d6] focus:outline-none"
+          className="input"
         />
         <input
           aria-label="End date"
           type="date"
           value={formState.endDate}
           onChange={(e) => setFormState((s) => ({ ...s, endDate: e.target.value }))}
-          className="rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-[#2a78d6] focus:outline-none"
+          className="input"
         />
         <button
           type="submit"
-          className="rounded-md bg-[#2a78d6] px-3 py-2 text-sm font-medium text-white hover:bg-[#184f95]"
+          className="btn btn-primary"
         >
           Apply filters
         </button>
         <button
           type="button"
           onClick={resetFilters}
-          className="rounded-md border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
+          className="btn btn-ghost"
         >
           Reset
         </button>
       </form>
 
-      {error && <p className="mb-4 text-sm text-red-600">{getErrorMessage(error)}</p>}
-      {isLoading && <p className="text-sm text-slate-500">Loading…</p>}
+      {error && <p className="mb-4 text-sm text-down">{getErrorMessage(error)}</p>}
+      {isLoading && <p className="text-sm text-ink-muted">Loading…</p>}
 
       {data && (
         <>
           <div className="space-y-2">
             {data.items.length === 0 && (
-              <div className="rounded-xl border border-dashed border-slate-300 bg-white py-10 text-center text-slate-400">
+              <div className="rounded-xl border border-dashed border-line-strong bg-surface py-10 text-center text-ink-dim">
                 No costs found.
               </div>
             )}
             {data.items.map((cost) => (
               <div
                 key={cost._id}
-                className="flex items-center justify-between gap-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md"
+                className="flex items-center justify-between gap-4 card transition-shadow hover:shadow-md"
               >
                 <div className="flex items-center gap-4 min-w-0">
                   <span
                     className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-semibold text-white"
-                    style={{ backgroundColor: CATEGORY_COLORS[cost.category] }}
+                    style={{ backgroundColor: categoryColor(cost.category) }}
                   >
                     {cost.category.slice(0, 1)}
                   </span>
                   <div className="min-w-0">
-                    <p className="truncate font-medium text-slate-900">
+                    <p className="truncate font-medium text-ink">
                       {cost.place || cost.description || "Untitled"}
                     </p>
-                    <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-500">
+                    <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-ink-muted">
                       <span>{new Date(cost.date).toLocaleDateString()}</span>
                       <span>·</span>
-                      <CategoryBadge category={cost.category} />
+                      <CategoryBadge category={cost.category} color={categoryColor(cost.category)} />
                       <span>·</span>
-                      <span className="rounded-full bg-slate-100 px-2 py-0.5 text-slate-600">
+                      <span className="rounded-full bg-raised px-2 py-0.5 text-ink-muted">
                         {cost.paymentMethod}
                       </span>
                       {cost.receiptUrl && (
@@ -289,7 +289,7 @@ export function CostsListPage() {
                           href={receiptUrl(cost.receiptUrl)}
                           target="_blank"
                           rel="noreferrer"
-                          className="text-[#2a78d6] hover:underline"
+                          className="text-accent hover:underline"
                         >
                           Receipt
                         </a>
@@ -298,17 +298,17 @@ export function CostsListPage() {
                   </div>
                 </div>
                 <div className="flex shrink-0 items-center gap-4">
-                  <span className="text-lg font-semibold text-slate-900">
+                  <span className="numeric text-lg font-semibold text-ink">
                     {currencyFormatter(cost.amount, cost.currency)}
                   </span>
                   <div className="flex flex-col gap-1 text-sm">
-                    <Link to={`/costs/${cost._id}`} className="text-slate-500 hover:text-[#2a78d6]">
+                    <Link to={`/costs/${cost._id}`} className="text-ink-muted hover:text-accent">
                       Edit
                     </Link>
                     <button
                       type="button"
                       onClick={() => handleDelete(cost._id)}
-                      className="text-red-500 hover:text-red-700"
+                      className="text-down hover:text-down"
                     >
                       Delete
                     </button>
@@ -318,7 +318,7 @@ export function CostsListPage() {
             ))}
           </div>
 
-          <div className="mt-4 flex items-center justify-between text-sm text-slate-600">
+          <div className="mt-4 flex items-center justify-between text-sm text-ink-muted">
             <span>
               Page {data.page} of {data.totalPages || 1} · {data.total} total
             </span>
@@ -327,7 +327,7 @@ export function CostsListPage() {
                 type="button"
                 disabled={data.page <= 1}
                 onClick={() => setFilters((prev) => ({ ...prev, page: (prev.page ?? 1) - 1 }))}
-                className="rounded-md border border-slate-300 bg-white px-3 py-1.5 disabled:opacity-40"
+                className="rounded-md border border-line-strong bg-surface px-3 py-1.5 disabled:opacity-40"
               >
                 Previous
               </button>
@@ -335,7 +335,7 @@ export function CostsListPage() {
                 type="button"
                 disabled={data.page >= data.totalPages}
                 onClick={() => setFilters((prev) => ({ ...prev, page: (prev.page ?? 1) + 1 }))}
-                className="rounded-md border border-slate-300 bg-white px-3 py-1.5 disabled:opacity-40"
+                className="rounded-md border border-line-strong bg-surface px-3 py-1.5 disabled:opacity-40"
               >
                 Next
               </button>

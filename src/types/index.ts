@@ -1,14 +1,19 @@
-export const CostCategory = {
-  Food: "Food",
-  Transport: "Transport",
-  Housing: "Housing",
-  Utilities: "Utilities",
-  Entertainment: "Entertainment",
-  Health: "Health",
-  Shopping: "Shopping",
-  Other: "Other",
-} as const;
-export type CostCategory = (typeof CostCategory)[keyof typeof CostCategory];
+// Categories are user-managed (see CategoriesPage) rather than a fixed
+// enum, so a cost's category is just its name. Costs keep the name they
+// were saved with even if that category is later renamed or deleted.
+export interface Category {
+  _id: string;
+  user: string;
+  name: string;
+  color: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CategoryFormInput {
+  name: string;
+  color: string;
+}
 
 export const PaymentMethod = {
   Cash: "Cash",
@@ -34,7 +39,7 @@ export interface Cost {
   date: string;
   place?: string;
   description?: string;
-  category: CostCategory;
+  category: string;
   paymentMethod: PaymentMethod;
   receiptUrl?: string;
   tags: string[];
@@ -58,7 +63,7 @@ export interface CostListQuery {
   limit?: number;
   sortBy?: "date" | "amount" | "createdAt";
   sortOrder?: "asc" | "desc";
-  category?: CostCategory;
+  category?: string;
   paymentMethod?: PaymentMethod;
   place?: string;
   minAmount?: number;
@@ -74,7 +79,7 @@ export interface CostFormInput {
   date: string;
   place?: string;
   description?: string;
-  category: CostCategory;
+  category: string;
   paymentMethod: PaymentMethod;
   tags?: string[];
   notes?: string;
@@ -99,7 +104,7 @@ export interface CurrencyTotal {
 }
 
 export interface CategoryTotal {
-  category: CostCategory;
+  category: string;
   currency: string;
   total: number;
   count: number;
@@ -128,6 +133,78 @@ export interface TrendPoint {
 export interface ReportTrend {
   interval: ReportInterval;
   data: TrendPoint[];
+}
+
+export interface CategoryBudget {
+  _id: string;
+  user: string;
+  year: number;
+  month: number;
+  category: string;
+  amount: number;
+  currency: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface MonthlySpendLimit {
+  _id: string;
+  user: string;
+  year: number;
+  month: number;
+  amount: number;
+  currency: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface BudgetsResult {
+  year: number;
+  month: number;
+  budgets: CategoryBudget[];
+  monthlyLimit: MonthlySpendLimit | null;
+}
+
+export interface SetCategoryBudgetInput {
+  year: number;
+  month: number;
+  category: string;
+  amount: number;
+  currency: string;
+}
+
+export interface SetMonthlyLimitInput {
+  year: number;
+  month: number;
+  amount: number;
+  currency: string;
+}
+
+export interface BudgetSummaryCategory {
+  category: string;
+  currency: string;
+  budgeted: number;
+  spent: number;
+  remaining: number;
+  percentUsed: number | null;
+}
+
+export interface BudgetSummaryOverall {
+  currency: string;
+  limit: number;
+  spent: number;
+  remaining: number;
+  percentUsed: number | null;
+  daysRemaining: number;
+  dailyPace: number | null;
+}
+
+export interface BudgetSummary {
+  year: number;
+  month: number;
+  categories: BudgetSummaryCategory[];
+  overall: BudgetSummaryOverall | null;
+  warnings: string[];
 }
 
 export interface Income {
