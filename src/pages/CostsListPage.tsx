@@ -6,6 +6,7 @@ import { CostsApi } from "../api/costs";
 import { getErrorMessage, receiptUrl } from "../lib/api";
 import { CategoryBadge, useCategories, useCategoryColor } from "../lib/categoryMeta";
 import { currencyFormatter } from "../lib/format";
+import { SHARED, useFamilyMembers } from "../lib/familyMeta";
 import { PaymentMethod } from "../types";
 import type { CostListQuery } from "../types";
 
@@ -41,10 +42,12 @@ export function CostsListPage() {
     endDate: "",
     minAmount: "",
     maxAmount: "",
+    forWhom: "",
   });
   const queryClient = useQueryClient();
   const { data: categories } = useCategories();
   const categoryColor = useCategoryColor();
+  const { members, hasOthers, nameOf } = useFamilyMembers();
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["costs", filters],
@@ -94,6 +97,7 @@ export function CostsListPage() {
       endDate: formState.endDate || undefined,
       minAmount: formState.minAmount ? Number(formState.minAmount) : undefined,
       maxAmount: formState.maxAmount ? Number(formState.maxAmount) : undefined,
+      forWhom: formState.forWhom || undefined,
     });
   };
 
@@ -106,6 +110,7 @@ export function CostsListPage() {
       endDate: "",
       minAmount: "",
       maxAmount: "",
+      forWhom: "",
     });
     setFilters(DEFAULT_FILTERS);
   };
@@ -234,19 +239,32 @@ export function CostsListPage() {
           onChange={(e) => setFormState((s) => ({ ...s, endDate: e.target.value }))}
           className="input"
         />
-        <button
-          type="submit"
-          className="btn btn-primary"
-        >
-          Apply filters
-        </button>
-        <button
-          type="button"
-          onClick={resetFilters}
-          className="btn btn-ghost"
-        >
-          Reset
-        </button>
+        {hasOthers && (
+          <select
+            aria-label="For whom"
+            value={formState.forWhom}
+            onChange={(e) => setFormState((s) => ({ ...s, forWhom: e.target.value }))}
+            className="input"
+          >
+            <option value="">Everyone</option>
+            <option value={SHARED}>Shared only</option>
+            {members.map((m) => (
+              <option key={m._id} value={m._id}>
+                For {m.name}
+              </option>
+            ))}
+          </select>
+        )}
+        {/* Kept in one grid cell so they don't split across rows when the
+            person filter is present. */}
+        <div className="flex gap-2">
+          <button type="submit" className="w-full btn btn-primary">
+            Apply
+          </button>
+          <button type="button" onClick={resetFilters} className="w-full btn btn-ghost">
+            Reset
+          </button>
+        </div>
       </form>
 
       {error && <p className="mb-4 text-sm text-down">{getErrorMessage(error)}</p>}
@@ -284,6 +302,14 @@ export function CostsListPage() {
                       <span className="rounded-full bg-raised px-2 py-0.5 text-ink-muted">
                         {cost.paymentMethod}
                       </span>
+                      {hasOthers && (
+                        <>
+                          <span>·</span>
+                          <span className="text-ink-dim">
+                            {nameOf(cost.paidBy)} → {cost.forWhom ? nameOf(cost.forWhom) : "Shared"}
+                          </span>
+                        </>
+                      )}
                       {cost.receiptUrl && (
                         <a
                           href={receiptUrl(cost.receiptUrl)}

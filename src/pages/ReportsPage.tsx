@@ -7,7 +7,15 @@ import { TrendChart, TrendTable } from "../components/TrendChart";
 import { getErrorMessage } from "../lib/api";
 import { useCategoryColor } from "../lib/categoryMeta";
 import { CATEGORICAL_PALETTE, currencyFormatter } from "../lib/format";
-import type { CategoryTotal, PaymentMethodTotal, ReportInterval, ReportQuery, SavingsTrendQuery } from "../types";
+import { SHARED, useFamilyMembers } from "../lib/familyMeta";
+import type {
+  CategoryTotal,
+  PaymentMethodTotal,
+  PersonTotal,
+  ReportInterval,
+  ReportQuery,
+  SavingsTrendQuery,
+} from "../types";
 
 // Inclusive range of `monthsBack` months ending at the current calendar month.
 function getSavingsMonthRange(monthsBack: number): SavingsTrendQuery {
@@ -143,19 +151,55 @@ function groupByKey<T extends { total: number; count: number; currency: string }
   return grouped;
 }
 
+// byPerson/byPayer arrive one row per person per currency; collapse them into
+// one row per person, ranked by the period's primary currency.
+function toPersonRows(rows: PersonTotal[], primaryCurrency: string | null) {
+  if (!primaryCurrency) return [];
+  const grouped = new Map<string, { name: string; totals: Map<string, number>; count: number }>();
+
+  for (const row of rows) {
+    // A null memberId is the "Shared" bucket, which still needs a stable key.
+    const key = row.memberId ?? SHARED;
+    const entry = grouped.get(key) ?? { name: row.name, totals: new Map(), count: 0 };
+    entry.totals.set(row.currency, (entry.totals.get(row.currency) ?? 0) + row.total);
+    entry.count += row.count;
+    grouped.set(key, entry);
+  }
+
+  return [...grouped.entries()]
+    .map(([key, entry]) => ({
+      key,
+      name: entry.name,
+      totals: entry.totals,
+      count: entry.count,
+      primaryTotal: entry.totals.get(primaryCurrency) ?? 0,
+    }))
+    .sort((a, b) => b.primaryTotal - a.primaryTotal);
+}
+
 export function ReportsPage() {
   const [filters, setFilters] = useState<ReportQuery>(getDefaultRange());
   const [interval, setInterval] = useState<ReportInterval>("month");
   const [trendView, setTrendView] = useState<"chart" | "table">("chart");
   const [compareEnabled, setCompareEnabled] = useState(true);
-  const [formState, setFormState] = useState(() => ({ ...getDefaultRange(), interval: "month" as ReportInterval }));
+  const [formState, setFormState] = useState(() => ({
+    ...getDefaultRange(),
+    interval: "month" as ReportInterval,
+    paidBy: "",
+    forWhom: "",
+  }));
   const [savingsMonthsBack, setSavingsMonthsBack] = useState(6);
   const categoryColor = useCategoryColor();
+  const { members, hasOthers } = useFamilyMembers();
+
+  // "Shared" isn't a person, so the savings trend -- which is per member --
+  // only narrows when the report is filtered to an actual member.
+  const savingsMember = members.some((m) => m._id === filters.forWhom) ? filters.forWhom : undefined;
 
   const savingsRange = useMemo(() => getSavingsMonthRange(savingsMonthsBack), [savingsMonthsBack]);
   const { data: savingsTrend, isLoading: savingsTrendLoading, error: savingsTrendError } = useQuery({
-    queryKey: ["savings-trend", savingsRange],
-    queryFn: () => SavingsGoalsApi.getTrend(savingsRange),
+    queryKey: ["savings-trend", savingsRange, savingsMember],
+    queryFn: () => SavingsGoalsApi.getTrend({ ...savingsRange, member: savingsMember }),
   });
 
   const { data: summary, isLoading: summaryLoading, error: summaryError } = useQuery({
@@ -245,6 +289,17 @@ export function ReportsPage() {
     return rows.sort((a, b) => b.primaryTotal - a.primaryTotal);
   }, [summary, primaryCurrency, previousComparables]);
 
+  const personRows = useMemo(
+    () => toPersonRows(summary?.byPerson ?? [], primaryCurrency),
+    [summary, primaryCurrency]
+  );
+  const payerRows = useMemo(
+    () => toPersonRows(summary?.byPayer ?? [], primaryCurrency),
+    [summary, primaryCurrency]
+  );
+  const maxPersonTotal = Math.max(1, ...personRows.map((r) => r.primaryTotal));
+  const maxPayerTotal = Math.max(1, ...payerRows.map((r) => r.primaryTotal));
+
   const maxCategoryTotal = Math.max(1, ...categoryRows.map((r) => r.primaryTotal));
   const maxPaymentTotal = Math.max(1, ...paymentRows.map((r) => r.primaryTotal));
 
@@ -258,13 +313,15 @@ export function ReportsPage() {
     setFilters({
       startDate: formState.startDate || undefined,
       endDate: formState.endDate || undefined,
+      paidBy: formState.paidBy || undefined,
+      forWhom: formState.forWhom || undefined,
     });
     setInterval(formState.interval);
   };
 
   const resetFilters = () => {
     const defaults = getDefaultRange();
-    setFormState({ ...defaults, interval: "month" });
+    setFormState({ ...defaults, interval: "month", paidBy: "", forWhom: "" });
     setFilters(defaults);
     setInterval("month");
   };
@@ -303,6 +360,37 @@ export function ReportsPage() {
           <option value="week">Weekly trend</option>
           <option value="month">Monthly trend</option>
         </select>
+        {hasOthers && (
+          <>
+            <select
+              aria-label="Spent on"
+              value={formState.forWhom}
+              onChange={(e) => setFormState((s) => ({ ...s, forWhom: e.target.value }))}
+              className="input"
+            >
+              <option value="">Spent on: everyone</option>
+              <option value={SHARED}>Spent on: shared only</option>
+              {members.map((m) => (
+                <option key={m._id} value={m._id}>
+                  Spent on: {m.name}
+                </option>
+              ))}
+            </select>
+            <select
+              aria-label="Paid by"
+              value={formState.paidBy}
+              onChange={(e) => setFormState((s) => ({ ...s, paidBy: e.target.value }))}
+              className="input"
+            >
+              <option value="">Paid by: anyone</option>
+              {members.map((m) => (
+                <option key={m._id} value={m._id}>
+                  Paid by: {m.name}
+                </option>
+              ))}
+            </select>
+          </>
+        )}
         <div className="flex gap-2">
           <button
             type="submit"
@@ -442,6 +530,46 @@ export function ReportsPage() {
               </div>
             </div>
           </div>
+
+          {hasOthers && (
+            <div className="mb-6 grid gap-6 sm:grid-cols-2">
+              <div className="card">
+                <h2 className="mb-1 text-sm font-semibold text-ink-muted">Spent on</h2>
+                <p className="mb-4 text-xs text-ink-dim">
+                  Who each cost was for. &ldquo;Shared&rdquo; is the household&apos;s own spending.
+                </p>
+                <div className="space-y-3">
+                  {personRows.map((row, i) => (
+                    <BarRow
+                      key={row.key}
+                      dot={CATEGORICAL_PALETTE[i % CATEGORICAL_PALETTE.length]}
+                      label={row.name}
+                      pct={(row.primaryTotal / maxPersonTotal) * 100}
+                      amountLabel={joinCurrencyTotals(row.totals)}
+                      countLabel={`${row.count} ${row.count === 1 ? "entry" : "entries"}`}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              <div className="card">
+                <h2 className="mb-1 text-sm font-semibold text-ink-muted">Paid by</h2>
+                <p className="mb-4 text-xs text-ink-dim">Whose money actually went out.</p>
+                <div className="space-y-3">
+                  {payerRows.map((row, i) => (
+                    <BarRow
+                      key={row.key}
+                      dot={CATEGORICAL_PALETTE[(i + 3) % CATEGORICAL_PALETTE.length]}
+                      label={row.name}
+                      pct={(row.primaryTotal / maxPayerTotal) * 100}
+                      amountLabel={joinCurrencyTotals(row.totals)}
+                      countLabel={`${row.count} ${row.count === 1 ? "entry" : "entries"}`}
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
         </>
       )}
 

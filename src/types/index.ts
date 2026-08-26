@@ -3,7 +3,7 @@
 // were saved with even if that category is later renamed or deleted.
 export interface Category {
   _id: string;
-  user: string;
+  family: string;
   name: string;
   color: string;
   createdAt: string;
@@ -31,9 +31,60 @@ export interface User {
   isVerified: boolean;
 }
 
+export interface Family {
+  _id: string;
+  name: string;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface FamilyMember {
+  _id: string;
+  name: string;
+  email: string;
+  isVerified: boolean;
+}
+
+export interface FamilyInvite {
+  _id: string;
+  email: string;
+  createdAt: string;
+  expiresAt: string;
+}
+
+export interface FamilyResult {
+  family: Family | null;
+  members: FamilyMember[];
+  pendingInvites: FamilyInvite[];
+}
+
+export interface ActivityLogEntry {
+  _id: string;
+  actor: FamilyMember;
+  action: "created" | "updated" | "deleted" | "restored";
+  entity: string;
+  entityId?: string;
+  summary: string;
+  createdAt: string;
+}
+
+export interface ActivityLogResult {
+  items: ActivityLogEntry[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
 export interface Cost {
   _id: string;
-  user: string;
+  family: string;
+  createdBy: string;
+  /** Whose money went out. */
+  paidBy: string;
+  /** Who it was for; null means a shared household cost. */
+  forWhom: string | null;
   amount: number;
   currency: string;
   date: string;
@@ -71,6 +122,9 @@ export interface CostListQuery {
   startDate?: string;
   endDate?: string;
   search?: string;
+  paidBy?: string;
+  /** A member id, or "shared" for household costs. */
+  forWhom?: string;
 }
 
 export interface CostFormInput {
@@ -84,9 +138,14 @@ export interface CostFormInput {
   tags?: string[];
   notes?: string;
   receipt?: File | null;
+  paidBy?: string;
+  /** A member id, or "shared" for household costs. */
+  forWhom?: string;
 }
 
 export interface ReportQuery {
+  paidBy?: string;
+  forWhom?: string;
   startDate?: string;
   endDate?: string;
 }
@@ -117,10 +176,23 @@ export interface PaymentMethodTotal {
   count: number;
 }
 
+/** A null memberId is the shared/household bucket, rendered as "Shared". */
+export interface PersonTotal {
+  memberId: string | null;
+  name: string;
+  currency: string;
+  total: number;
+  count: number;
+}
+
 export interface ReportSummary {
   overall: CurrencyTotal[];
   byCategory: CategoryTotal[];
   byPaymentMethod: PaymentMethodTotal[];
+  /** How much was spent on each person. */
+  byPerson: PersonTotal[];
+  /** How much each person paid out. */
+  byPayer: PersonTotal[];
 }
 
 export interface TrendPoint {
@@ -137,7 +209,9 @@ export interface ReportTrend {
 
 export interface CategoryBudget {
   _id: string;
-  user: string;
+  family: string;
+  /** null means the household-wide budget. */
+  member: string | null;
   year: number;
   month: number;
   category: string;
@@ -149,7 +223,8 @@ export interface CategoryBudget {
 
 export interface MonthlySpendLimit {
   _id: string;
-  user: string;
+  family: string;
+  member: string | null;
   year: number;
   month: number;
   amount: number;
@@ -161,11 +236,14 @@ export interface MonthlySpendLimit {
 export interface BudgetsResult {
   year: number;
   month: number;
+  member: string | null;
   budgets: CategoryBudget[];
   monthlyLimit: MonthlySpendLimit | null;
 }
 
 export interface SetCategoryBudgetInput {
+  /** A member id, or "household"/null for the household budget. */
+  member?: string | null;
   year: number;
   month: number;
   category: string;
@@ -174,6 +252,7 @@ export interface SetCategoryBudgetInput {
 }
 
 export interface SetMonthlyLimitInput {
+  member?: string | null;
   year: number;
   month: number;
   amount: number;
@@ -202,6 +281,7 @@ export interface BudgetSummaryOverall {
 export interface BudgetSummary {
   year: number;
   month: number;
+  member: string | null;
   categories: BudgetSummaryCategory[];
   overall: BudgetSummaryOverall | null;
   warnings: string[];
@@ -209,7 +289,9 @@ export interface BudgetSummary {
 
 export interface Income {
   _id: string;
-  user: string;
+  family: string;
+  createdBy: string;
+  earnedBy: FamilyMember | string;
   year: number;
   month: number;
   amount: number;
@@ -221,9 +303,11 @@ export interface Income {
 export interface IncomeListQuery {
   year?: number;
   month?: number;
+  earnedBy?: string;
 }
 
 export interface IncomeFormInput {
+  earnedBy?: string;
   year: number;
   month: number;
   amount: number;
@@ -232,7 +316,9 @@ export interface IncomeFormInput {
 
 export interface SavingsGoal {
   _id: string;
-  user: string;
+  family: string;
+  createdBy: string;
+  member: FamilyMember | string | null;
   year: number;
   month: number;
   targetAmount: number;
@@ -245,9 +331,11 @@ export interface SavingsGoal {
 export interface SavingsGoalListQuery {
   year?: number;
   month?: number;
+  member?: string | null;
 }
 
 export interface SavingsGoalFormInput {
+  member?: string | null;
   year: number;
   month: number;
   targetAmount: number;
@@ -276,6 +364,7 @@ export interface SavingsTrendQuery {
   startMonth: number;
   endYear: number;
   endMonth: number;
+  member?: string | null;
 }
 
 export interface SavingsTrendMonth {

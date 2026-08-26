@@ -7,6 +7,7 @@ const NAV_ITEMS = [
   { to: "/savings", label: "Savings", icon: "◈" },
   { to: "/reports", label: "Reports", icon: "◭" },
   { to: "/categories", label: "Categories", icon: "⬡" },
+  { to: "/family", label: "Family", icon: "◍" },
   { to: "/profile", label: "Profile", icon: "◯" },
 ];
 

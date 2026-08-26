@@ -23,8 +23,8 @@ export const SavingsGoalsApi = {
     await api.delete(`/savings-goals/${id}`);
   },
 
-  getSummary: async (year: number, month: number): Promise<SavingsSummary> => {
-    const res = await api.get("/savings-goals/summary", { params: { year, month } });
+  getSummary: async (year: number, month: number, member?: string | null): Promise<SavingsSummary> => {
+    const res = await api.get("/savings-goals/summary", { params: { year, month, member } });
     return res.data;
   },
 

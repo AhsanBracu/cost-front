@@ -12,6 +12,9 @@ const buildFormData = (data: Partial<CostFormInput>) => {
   if (data.paymentMethod !== undefined) formData.append("paymentMethod", data.paymentMethod);
   if (data.notes) formData.append("notes", data.notes);
   if (data.tags?.length) formData.append("tags", data.tags.join(","));
+  if (data.paidBy) formData.append("paidBy", data.paidBy);
+  // Always sent (even as "shared") so clearing an attribution actually sticks.
+  if (data.forWhom !== undefined) formData.append("forWhom", data.forWhom);
   if (data.receipt) formData.append("receipt", data.receipt);
   return formData;
 };

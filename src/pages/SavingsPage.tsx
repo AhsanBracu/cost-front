@@ -4,6 +4,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { IncomeApi } from "../api/income";
 import { SavingsGoalsApi } from "../api/savingsGoals";
 import { getErrorMessage } from "../lib/api";
+import { HOUSEHOLD, idOf, useFamilyMembers } from "../lib/familyMeta";
+import { PersonSelect } from "../components/PersonSelect";
 import { CURRENCIES, DEFAULT_CURRENCY, currencyFormatter } from "../lib/format";
 
 
@@ -28,6 +30,11 @@ export function SavingsPage() {
   const [monthValue, setMonthValue] = useState(currentMonthValue());
   const { year, month } = parseMonthValue(monthValue);
   const queryClient = useQueryClient();
+  const { members, hasOthers, currentUserId, nameOf } = useFamilyMembers();
+
+  // Which savings picture the summary shows: the whole household, or one
+  // person's own income, spending and goals.
+  const [scope, setScope] = useState("");
 
   const invalidateAll = () => {
     queryClient.invalidateQueries({ queryKey: ["income", year, month] });
@@ -40,7 +47,15 @@ export function SavingsPage() {
     queryKey: ["income", year, month],
     queryFn: () => IncomeApi.list({ year, month }),
   });
-  const existingIncome = incomes?.[0];
+
+  // Each earner keeps their own row for the month, so the form edits one
+  // person's income at a time.
+  const [earner, setEarner] = useState("");
+  useEffect(() => {
+    if (currentUserId) setEarner((e) => e || currentUserId);
+  }, [currentUserId]);
+
+  const existingIncome = incomes?.find((i) => idOf(i.earnedBy) === earner);
 
   const [incomeForm, setIncomeForm] = useState({ amount: "", currency: DEFAULT_CURRENCY });
   const [incomeError, setIncomeError] = useState<string | null>(null);
@@ -51,11 +66,17 @@ export function SavingsPage() {
       currency: existingIncome?.currency ?? DEFAULT_CURRENCY,
     });
     setIncomeError(null);
-  }, [existingIncome, monthValue]);
+  }, [existingIncome, monthValue, earner]);
 
   const saveIncomeMutation = useMutation({
     mutationFn: () => {
-      const payload = { year, month, amount: Number(incomeForm.amount), currency: incomeForm.currency };
+      const payload = {
+        year,
+        month,
+        amount: Number(incomeForm.amount),
+        currency: incomeForm.currency,
+        earnedBy: earner || undefined,
+      };
       return existingIncome ? IncomeApi.update(existingIncome._id, payload) : IncomeApi.create(payload);
     },
     onSuccess: invalidateAll,
@@ -74,7 +95,12 @@ export function SavingsPage() {
     queryFn: () => SavingsGoalsApi.list({ year, month }),
   });
 
-  const [goalForm, setGoalForm] = useState({ purpose: "", targetAmount: "", currency: DEFAULT_CURRENCY });
+  const [goalForm, setGoalForm] = useState({
+    purpose: "",
+    targetAmount: "",
+    currency: DEFAULT_CURRENCY,
+    member: HOUSEHOLD,
+  });
   const [goalError, setGoalError] = useState<string | null>(null);
 
   const addGoalMutation = useMutation({
@@ -85,9 +111,10 @@ export function SavingsPage() {
         purpose: goalForm.purpose,
         targetAmount: Number(goalForm.targetAmount),
         currency: goalForm.currency,
+        member: goalForm.member,
       }),
     onSuccess: () => {
-      setGoalForm({ purpose: "", targetAmount: "", currency: goalForm.currency });
+      setGoalForm((f) => ({ ...f, purpose: "", targetAmount: "" }));
       invalidateAll();
     },
     onError: (err) => setGoalError(getErrorMessage(err)),
@@ -106,9 +133,13 @@ export function SavingsPage() {
 
   // --- Summary ---
   const { data: summary, isLoading: summaryLoading, error: summaryError } = useQuery({
-    queryKey: ["savings-summary", year, month],
-    queryFn: () => SavingsGoalsApi.getSummary(year, month),
+    // An empty scope means the whole household, which the API expresses by
+    // leaving the member parameter off entirely.
+    queryKey: ["savings-summary", year, month, scope],
+    queryFn: () => SavingsGoalsApi.getSummary(year, month, scope || undefined),
   });
+
+  const scopeLabel = scope ? nameOf(scope) : "the whole family";
 
   return (
     <div>
@@ -129,7 +160,28 @@ export function SavingsPage() {
           <h2 className="mb-4 text-sm font-semibold text-ink-muted">
             Income for {monthValue}
           </h2>
+
+          {hasOthers && incomes && incomes.length > 0 && (
+            <div className="mb-4 space-y-1 text-sm">
+              {incomes.map((income) => (
+                <div key={income._id} className="flex justify-between text-ink-muted">
+                  <span>{nameOf(idOf(income.earnedBy))}</span>
+                  <span className="numeric text-ink">
+                    {currencyFormatter(income.amount, income.currency)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+
           <form onSubmit={handleIncomeSubmit} className="space-y-4">
+            <PersonSelect
+              id="income-earner"
+              label="Earned by"
+              value={earner}
+              onChange={setEarner}
+              hideWhenSolo
+            />
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label htmlFor="income-amount" className="block text-sm font-medium text-ink-muted">
@@ -195,6 +247,12 @@ export function SavingsPage() {
                   <p className="text-sm font-medium text-ink">{goal.purpose}</p>
                   <p className="text-xs text-ink-muted">
                     {currencyFormatter(goal.targetAmount, goal.currency)}
+                    {hasOthers && (
+                      <span className="text-ink-dim">
+                        {" "}
+                        · {goal.member ? nameOf(idOf(goal.member)) : "Household"}
+                      </span>
+                    )}
                   </p>
                 </div>
                 <button
@@ -257,6 +315,14 @@ export function SavingsPage() {
                 </select>
               </div>
             </div>
+            <PersonSelect
+              id="goal-member"
+              label="Saving for"
+              value={goalForm.member}
+              onChange={(v) => setGoalForm((f) => ({ ...f, member: v }))}
+              sharedOption={{ value: HOUSEHOLD, label: "Household" }}
+              hideWhenSolo
+            />
             {goalError && <p className="text-sm text-down">{goalError}</p>}
             <button
               type="submit"
@@ -271,14 +337,31 @@ export function SavingsPage() {
 
       {/* Summary */}
       <div className="card-lg">
-        <h2 className="mb-4 text-sm font-semibold text-ink-muted">Summary for {monthValue}</h2>
+        <div className="mb-4 flex items-center justify-between gap-4">
+          <h2 className="text-sm font-semibold text-ink-muted">Summary for {monthValue}</h2>
+          {hasOthers && (
+            <select
+              aria-label="Summary scope"
+              value={scope}
+              onChange={(e) => setScope(e.target.value)}
+              className="input w-auto"
+            >
+              <option value="">Whole family</option>
+              {members.map((m) => (
+                <option key={m._id} value={m._id}>
+                  {m.name}
+                </option>
+              ))}
+            </select>
+          )}
+        </div>
 
         {summaryError && <p className="text-sm text-down">{getErrorMessage(summaryError)}</p>}
         {summaryLoading && <p className="text-sm text-ink-muted">Loading…</p>}
 
         {summary && summary.breakdown.length === 0 && (
           <p className="text-sm text-ink-dim">
-            No income, costs, or savings goals recorded for this month yet.
+            No income, costs, or savings goals recorded for {scopeLabel} this month yet.
           </p>
         )}
 

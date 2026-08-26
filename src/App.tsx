@@ -13,6 +13,8 @@ import { ReportsPage } from "./pages/ReportsPage";
 import { SavingsPage } from "./pages/SavingsPage";
 import { CategoriesPage } from "./pages/CategoriesPage";
 import { BudgetPage } from "./pages/BudgetPage";
+import { FamilyPage } from "./pages/FamilyPage";
+import { JoinFamilyPage } from "./pages/JoinFamilyPage";
 
 function App() {
   return (
@@ -24,6 +26,9 @@ function App() {
         <Route path="/reset-password" element={<ResetPasswordPage />} />
       </Route>
       <Route path="/verify-email" element={<VerifyEmailPage />} />
+      {/* Handles the logged-out case itself, so it isn't behind ProtectedRoute:
+          a redirect would drop the invite token. */}
+      <Route path="/join-family" element={<JoinFamilyPage />} />
 
       <Route element={<ProtectedRoute />}>
         <Route element={<Layout />}>
@@ -34,6 +39,7 @@ function App() {
           <Route path="/savings" element={<SavingsPage />} />
           <Route path="/budget" element={<BudgetPage />} />
           <Route path="/categories" element={<CategoriesPage />} />
+          <Route path="/family" element={<FamilyPage />} />
           <Route path="/profile" element={<ProfilePage />} />
         </Route>
       </Route>

@@ -9,13 +9,13 @@ import type {
 } from "../types";
 
 export const BudgetsApi = {
-  get: async (year: number, month: number): Promise<BudgetsResult> => {
-    const res = await api.get("/budgets", { params: { year, month } });
+  get: async (year: number, month: number, member?: string | null): Promise<BudgetsResult> => {
+    const res = await api.get("/budgets", { params: { year, month, member } });
     return res.data;
   },
 
-  getSummary: async (year: number, month: number): Promise<BudgetSummary> => {
-    const res = await api.get("/budgets/summary", { params: { year, month } });
+  getSummary: async (year: number, month: number, member?: string | null): Promise<BudgetSummary> => {
+    const res = await api.get("/budgets/summary", { params: { year, month, member } });
     return res.data;
   },
 
@@ -33,7 +33,7 @@ export const BudgetsApi = {
     return res.data.monthlyLimit;
   },
 
-  removeMonthlyLimit: async (year: number, month: number): Promise<void> => {
-    await api.delete("/budgets/limit", { params: { year, month } });
+  removeMonthlyLimit: async (year: number, month: number, member?: string | null): Promise<void> => {
+    await api.delete("/budgets/limit", { params: { year, month, member } });
   },
 };

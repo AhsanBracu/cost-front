@@ -5,6 +5,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CostsApi } from "../api/costs";
 import { getErrorMessage, receiptUrl } from "../lib/api";
 import { useCategories } from "../lib/categoryMeta";
+import { SHARED, useFamilyMembers } from "../lib/familyMeta";
+import { PersonSelect } from "../components/PersonSelect";
 import { CURRENCIES, DEFAULT_CURRENCY } from "../lib/format";
 import { PaymentMethod } from "../types";
 
@@ -19,6 +21,9 @@ interface FormState {
   paymentMethod: PaymentMethod;
   tags: string;
   notes: string;
+  paidBy: string;
+  /** A member id, or SHARED for a household cost. */
+  forWhom: string;
 }
 
 const emptyForm: FormState = {
@@ -31,6 +36,8 @@ const emptyForm: FormState = {
   paymentMethod: PaymentMethod.Cash,
   tags: "",
   notes: "",
+  paidBy: "",
+  forWhom: SHARED,
 };
 
 export function CostFormPage() {
@@ -44,6 +51,7 @@ export function CostFormPage() {
   const [error, setError] = useState<string | null>(null);
 
   const { data: categories } = useCategories();
+  const { currentUserId, hasOthers } = useFamilyMembers();
 
   const { data: existing } = useQuery({
     queryKey: ["cost", id],
@@ -54,6 +62,13 @@ export function CostFormPage() {
   // Categories load async, so a new cost's form starts with none selected —
   // fill in the first one once they arrive, without clobbering a category
   // already set (either by the user or loaded from the cost being edited).
+  // Whoever is entering the cost is the likeliest payer.
+  useEffect(() => {
+    if (currentUserId) {
+      setForm((f) => (f.paidBy ? f : { ...f, paidBy: currentUserId }));
+    }
+  }, [currentUserId]);
+
   useEffect(() => {
     if (categories?.length) {
       setForm((f) => (f.category ? f : { ...f, category: categories[0].name }));
@@ -72,6 +87,8 @@ export function CostFormPage() {
         paymentMethod: existing.paymentMethod,
         tags: existing.tags.join(", "),
         notes: existing.notes ?? "",
+        paidBy: existing.paidBy ?? "",
+        forWhom: existing.forWhom ?? SHARED,
       });
     }
   }, [existing]);
@@ -91,6 +108,8 @@ export function CostFormPage() {
           .map((t) => t.trim())
           .filter(Boolean),
         notes: form.notes || undefined,
+        paidBy: form.paidBy || undefined,
+        forWhom: form.forWhom,
         receipt,
       };
       return isEditing ? CostsApi.update(id as string, payload) : CostsApi.create(payload);
@@ -225,6 +244,24 @@ export function CostFormPage() {
             </select>
           </div>
         </div>
+
+        {hasOthers && (
+          <div className="grid grid-cols-2 gap-4">
+            <PersonSelect
+              id="paidBy"
+              label="Paid by"
+              value={form.paidBy}
+              onChange={(v) => setForm((f) => ({ ...f, paidBy: v }))}
+            />
+            <PersonSelect
+              id="forWhom"
+              label="For whom"
+              value={form.forWhom}
+              onChange={(v) => setForm((f) => ({ ...f, forWhom: v }))}
+              sharedOption={{ value: SHARED, label: "Shared (household)" }}
+            />
+          </div>
+        )}
 
         <div>
           <label htmlFor="description" className="block text-sm font-medium text-ink-muted">

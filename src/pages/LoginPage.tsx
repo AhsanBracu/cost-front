@@ -14,6 +14,20 @@ export function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Two ways to end up here with somewhere to go afterwards: a protected page
+  // bounced us (state.from), or a link asked for a destination (?next=), as
+  // family invites do. The search string matters for those, so it's kept.
+  const fromState = location.state as { from?: { pathname?: string; search?: string } } | null;
+  const nextParam = new URLSearchParams(location.search).get("next");
+  // Only in-app paths, so a crafted link can't bounce anyone off-site.
+  const safeNext = nextParam?.startsWith("/") && !nextParam.startsWith("//") ? nextParam : null;
+  const redirectTo =
+    safeNext ??
+    (fromState?.from
+      ? `${fromState.from.pathname ?? ""}${fromState.from.search ?? ""}`
+      : null) ??
+    "/costs";
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -21,8 +35,7 @@ export function LoginPage() {
     try {
       const res = await api.post("/public/login", { email, password });
       login(res.data.token, res.data.user);
-      const from = (location.state as { from?: Location })?.from?.pathname ?? "/costs";
-      navigate(from, { replace: true });
+      navigate(redirectTo, { replace: true });
     } catch (err) {
       setError(getErrorMessage(err));
     } finally {

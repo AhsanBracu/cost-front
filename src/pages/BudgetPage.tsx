@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { BudgetsApi } from "../api/budgets";
 import { getErrorMessage } from "../lib/api";
 import { useCategories, useCategoryColor } from "../lib/categoryMeta";
+import { HOUSEHOLD, useFamilyMembers } from "../lib/familyMeta";
 import { CURRENCIES, DEFAULT_CURRENCY, currencyFormatter } from "../lib/format";
 
 
@@ -36,20 +37,26 @@ export function BudgetPage() {
 
   const { data: categories } = useCategories();
   const categoryColor = useCategoryColor();
+  const { members, hasOthers } = useFamilyMembers();
+
+  // Budgets are kept separately for the household as a whole and for each
+  // person, so this picks which set of numbers the page is editing. A
+  // member's budget measures what was spent *on* them.
+  const [member, setMember] = useState(HOUSEHOLD);
 
   const invalidate = () => {
-    queryClient.invalidateQueries({ queryKey: ["budgets", year, month] });
-    queryClient.invalidateQueries({ queryKey: ["budget-summary", year, month] });
+    queryClient.invalidateQueries({ queryKey: ["budgets", year, month, member] });
+    queryClient.invalidateQueries({ queryKey: ["budget-summary", year, month, member] });
   };
 
   const { data: budgets } = useQuery({
-    queryKey: ["budgets", year, month],
-    queryFn: () => BudgetsApi.get(year, month),
+    queryKey: ["budgets", year, month, member],
+    queryFn: () => BudgetsApi.get(year, month, member),
   });
 
   const { data: summary, isLoading, error } = useQuery({
-    queryKey: ["budget-summary", year, month],
-    queryFn: () => BudgetsApi.getSummary(year, month),
+    queryKey: ["budget-summary", year, month, member],
+    queryFn: () => BudgetsApi.getSummary(year, month, member),
   });
 
   // --- Overall monthly limit ---
@@ -60,17 +67,17 @@ export function BudgetPage() {
     setLimitInput(budgets?.monthlyLimit ? String(budgets.monthlyLimit.amount) : "");
     if (budgets?.monthlyLimit) setCurrency(budgets.monthlyLimit.currency);
     setLimitError(null);
-  }, [budgets?.monthlyLimit, monthValue]);
+  }, [budgets?.monthlyLimit, monthValue, member]);
 
   const saveLimitMutation = useMutation({
     mutationFn: () =>
-      BudgetsApi.setMonthlyLimit({ year, month, amount: Number(limitInput), currency }),
+      BudgetsApi.setMonthlyLimit({ year, month, amount: Number(limitInput), currency, member }),
     onSuccess: invalidate,
     onError: (err) => setLimitError(getErrorMessage(err)),
   });
 
   const removeLimitMutation = useMutation({
-    mutationFn: () => BudgetsApi.removeMonthlyLimit(year, month),
+    mutationFn: () => BudgetsApi.removeMonthlyLimit(year, month, member),
     onSuccess: invalidate,
     onError: (err) => setLimitError(getErrorMessage(err)),
   });
@@ -87,7 +94,7 @@ export function BudgetPage() {
 
   const saveBudgetMutation = useMutation({
     mutationFn: ({ category, amount }: { category: string; amount: number }) =>
-      BudgetsApi.setCategoryBudget({ year, month, category, amount, currency }),
+      BudgetsApi.setCategoryBudget({ year, month, category, amount, currency, member }),
     onSuccess: invalidate,
     onError: (err) => setRowError(getErrorMessage(err)),
   });
@@ -152,6 +159,21 @@ export function BudgetPage() {
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold text-ink">Budget</h1>
         <div className="flex gap-2">
+          {hasOthers && (
+            <select
+              aria-label="Budget for"
+              value={member}
+              onChange={(e) => setMember(e.target.value)}
+              className="input"
+            >
+              <option value={HOUSEHOLD}>Household budget</option>
+              {members.map((m) => (
+                <option key={m._id} value={m._id}>
+                  {m.name}&apos;s budget
+                </option>
+              ))}
+            </select>
+          )}
           <select
             aria-label="Currency"
             value={currency}
