@@ -376,3 +376,38 @@ export interface SavingsTrendMonth {
 export interface SavingsTrend {
   data: SavingsTrendMonth[];
 }
+
+export interface InsightNarrative {
+  mainDriver: string;
+  explanation: string;
+  suggestions: string[];
+}
+
+export interface InsightToolCall {
+  name: string;
+  input: unknown;
+}
+
+export interface DailyInsightComparison {
+  currency: string;
+  today: number;
+  yesterday: number;
+  lastMonthSameDay: number;
+  monthToDate: number;
+  vsYesterday: number;
+  vsLastMonthSameDay: number;
+}
+
+export interface DailyInsight {
+  date: string;
+  comparedTo: { yesterday: string; lastMonthSameDay: string };
+  comparison: DailyInsightComparison[];
+  /** Null until an explanation has been generated for this day. */
+  narrative: InsightNarrative | null;
+  toolCalls: InsightToolCall[];
+  cached: boolean;
+  /** False once costs changed after the explanation was written. */
+  stillCurrent: boolean;
+  generatedAt: string | null;
+  llmConfigured: boolean;
+}

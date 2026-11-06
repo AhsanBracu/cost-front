@@ -7,6 +7,7 @@ import { getErrorMessage, receiptUrl } from "../lib/api";
 import { CategoryBadge, useCategories, useCategoryColor } from "../lib/categoryMeta";
 import { currencyFormatter } from "../lib/format";
 import { SHARED, useFamilyMembers } from "../lib/familyMeta";
+import { DailyInsightCard } from "../components/DailyInsightCard";
 import { PaymentMethod } from "../types";
 import type { CostListQuery } from "../types";
 
@@ -132,6 +133,8 @@ export function CostsListPage() {
           + Add cost
         </Link>
       </div>
+
+      <DailyInsightCard />
 
       {stats && stats.count > 0 && (
         <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3">
